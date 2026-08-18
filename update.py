@@ -6,16 +6,19 @@
 之後每次：只抓當天 1 次 T86 + BFI82U + 期貨 + 匯率 = 共 4 次請求
 
 檔案位置（與本腳本同目錄）：
-  data.json   — T86 近15交易日原始資料（不上傳 Netlify）
-  index.html  — 顯示頁面（更新後上傳 Netlify）
+  data.json   — T86 近15交易日原始資料（不上傳，只留在本機）
+  index.html  — 顯示頁面（更新後 git push 到 GitHub Pages）
+
+部署：git push 到 github.com/debby0524/tw-institutional-tracker（main 分支，GitHub Pages
+      直接從 main 的 / (root) 建置），改自 Netlify（2026-08 因帳單額度暫停 production deploy
+      而換掉）。推送用的 Personal Access Token 存在 ~/.github_token，只需要 Contents
+      read/write 權限，不會存進 repo 或 log。
 """
 
 import json
 import os
 import re
-import shutil
 import subprocess
-import tempfile
 import time
 import urllib.request
 from collections import defaultdict
@@ -25,9 +28,8 @@ from datetime import datetime, timedelta
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 HTML_PATH  = os.path.join(BASE_DIR, "index.html")
 DATA_PATH  = os.path.join(BASE_DIR, "data.json")
-TOKEN_PATH = os.path.expanduser("~/.netlify_token")
-NETLIFY_CLI     = os.path.expanduser("~/.npm-global/bin/netlify")
-NETLIFY_SITE_ID = "cd9aa85d-5847-4e8a-9d1a-34bea93f7acb"
+GITHUB_TOKEN_PATH = os.path.expanduser("~/.github_token")
+GITHUB_REPO_URL   = "github.com/debby0524/tw-institutional-tracker.git"
 
 T86_KEEP    = 15   # d15 需要的天數
 CHART_KEEP  = 30   # TOTAL/FUT/FX 圖表保留天數
@@ -601,25 +603,43 @@ def main():
     save_data(data)
     print("   index.html 與 data.json 已儲存")
 
-    # 8. Netlify deploy
-    print("\n【6】部署至 Netlify...")
-    tmp_dir = tempfile.mkdtemp()
-    try:
-        shutil.copy(HTML_PATH, os.path.join(tmp_dir, "index.html"))
-        token = open(TOKEN_PATH).read().strip()
-        env = {**os.environ, "NETLIFY_AUTH_TOKEN": token}
-        result = subprocess.run(
-            [NETLIFY_CLI, "deploy", "--prod", "--dir", tmp_dir, "--site", NETLIFY_SITE_ID],
-            capture_output=True, text=True, env=env, timeout=60)
-        if result.returncode == 0:
-            url_m = re.search(r"Production URL:\s*(\S+)", result.stdout)
-            print(f"   ✅ 部署成功{' → ' + url_m.group(1) if url_m else ''}")
-        else:
-            print(f"   ❌ 部署失敗：{result.stderr[:300]}")
-    finally:
-        shutil.rmtree(tmp_dir)
+    # 8. 部署 — git push 到 GitHub Pages
+    print("\n【6】部署至 GitHub Pages...")
+    deploy_to_github_pages(today)
 
     print(f"\n=== 完成 {dash_date(today)} ===\n")
+
+
+def deploy_to_github_pages(today):
+    def run(args, **kw):
+        return subprocess.run(args, cwd=BASE_DIR, capture_output=True, text=True, timeout=30, **kw)
+
+    run(["git", "add", "-A"])
+    diff = run(["git", "diff", "--cached", "--quiet"])
+    if diff.returncode == 0:
+        print("   沒有變動，跳過 commit/push")
+        return
+
+    commit = run(["git", "commit", "-m", f"Update {dash_date(today)} 資料"])
+    if commit.returncode != 0:
+        print(f"   ❌ commit 失敗：{commit.stderr[:300]}")
+        return
+
+    try:
+        token = open(GITHUB_TOKEN_PATH).read().strip()
+    except FileNotFoundError:
+        print(f"   ❌ 找不到 GitHub token（{GITHUB_TOKEN_PATH}），已 commit 但沒有 push")
+        return
+
+    push_url = f"https://oauth2:{token}@{GITHUB_REPO_URL}"
+    result = run(["git", "push", push_url, "main"])
+    if result.returncode == 0:
+        print("   ✅ 部署成功 → https://debby0524.github.io/tw-institutional-tracker/")
+    else:
+        # stderr 可能含 token，僅顯示不含 push_url 的部分
+        err = result.stderr.replace(token, "***")[:300]
+        print(f"   ❌ push 失敗：{err}")
+    return
 
 
 if __name__ == "__main__":
