@@ -1,0 +1,6 @@
+data.json
+revenue-data.json
+.netlify/
+.claude/
+__pycache__/
+*.pyc

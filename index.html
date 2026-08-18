@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外資 / 投信 買賣超追蹤</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+  :root{
+    --bg: #12151b;
+    --panel: #1a1e26;
+    --panel-2: #20242e;
+    --line: #2b303c;
+    --text: #e8eaef;
+    --sub: #8891a3;
+    --buy: #ff5b5b;      /* 台股慣例：紅=買超 */
+    --buy-dim: #3a2224;
+    --sell: #35d38a;     /* 台股慣例：綠=賣超 */
+    --sell-dim: #1c332a;
+    --amber: #f0b429;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family:'Noto Sans TC', sans-serif;
+    padding: 20px 14px calc(76px + env(safe-area-inset-bottom));
+    min-height:100vh;
+  }
+  .wrap{ max-width: 760px; margin: 0 auto; }
+
+  /* header */
+  header{ margin-bottom: 20px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 3px; color: var(--amber);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  h1{
+    font-size: 24px; font-weight: 900; letter-spacing: -0.02em;
+    display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  }
+  h1 .date{
+    font-family:'IBM Plex Mono', monospace; font-weight:500; font-size:14px; color: var(--sub);
+  }
+  .demo-flag{
+    display:inline-block; margin-top:10px; padding: 5px 10px;
+    background: var(--panel-2); border:1px solid var(--line); border-radius: 3px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--amber);
+  }
+
+  /* fx strip */
+  .fx-strip{
+    background: var(--panel); border:1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; margin-top:12px;
+  }
+  .fx-top{ display:flex; align-items:center; gap:10px; }
+  .fx-strip .fx-label{ font-size:12px; color:var(--sub); font-weight:700; white-space:nowrap; }
+  .fx-strip .fx-price{
+    font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:700;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-strip .fx-delta{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;
+    display:flex; align-items:center; gap:3px;
+  }
+  .fx-strip .fx-delta.up{ color: var(--buy); }     /* 美元走升＝台幣貶值 → 紅 */
+  .fx-strip .fx-delta.down{ color: var(--sell); }  /* 美元走貶＝台幣升值 → 綠 */
+  .fx-strip .fx-note{ margin-left:auto; font-size:11px; color:var(--sub); font-family:'IBM Plex Mono',monospace; text-align:right; }
+  .fx-spark-wrap{ margin-top:10px; }
+  .fx-spark-label{
+    display:flex; justify-content:space-between; font-size:10.5px; color:var(--sub);
+    font-family:'IBM Plex Mono',monospace; margin-bottom:4px;
+  }
+
+  /* trend chart panel */
+  .chart-panel{ margin-top:16px; }
+  .chart-meta{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 12px 14px 0; gap:10px; flex-wrap:wrap;
+  }
+  .chart-meta .latest{
+    font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:700; color: var(--buy);
+  }
+  .chart-meta .latest.long{ color: var(--sell); }
+  .chart-meta .latest-label{ font-size:11px; color:var(--sub); margin-top:2px; }
+  .chart-meta .chg{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700;
+    padding: 5px 10px; border-radius: 6px; white-space:nowrap;
+  }
+  .chart-meta .chg.more-short{ background: var(--buy-dim); color: var(--buy); }
+  .chart-meta .chg.less-short{ background: var(--sell-dim); color: var(--sell); }
+  .chart-meta .chg .chg-label{ display:block; font-size:9.5px; color:var(--sub); font-weight:500; margin-top:2px; }
+  .chart-svg-wrap{ padding: 10px 6px 4px; }
+  .chart-xaxis{
+    display:flex; justify-content:space-between; padding: 0 46px 10px 40px;
+    font-size:10px; color:var(--sub); font-family:'IBM Plex Mono',monospace;
+  }
+  .chart-legend{
+    display:flex; gap:16px; padding: 0 14px 12px; font-size:11px; color:var(--sub);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .chart-legend span{ display:flex; align-items:center; gap:5px; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  /* controls */
+  .controls{
+    display:flex; flex-direction:column; gap:10px; margin: 18px 0 16px;
+  }
+  .row{ display:flex; gap:8px; }
+  .controls .row:first-child{ display:none; } /* 機構切換改由底部分頁控制 */
+  .seg{
+    display:flex; background: var(--panel); border:1px solid var(--line);
+    border-radius: 8px; overflow:hidden; flex:1;
+  }
+  .seg button{
+    flex:1; padding:10px 6px; background:transparent; border:none;
+    color: var(--sub); font-family:'Noto Sans TC',sans-serif; font-weight:700;
+    font-size:14px; cursor:pointer; transition:.15s;
+  }
+  .seg button.active{ background: var(--panel-2); color: var(--text); }
+  .seg.institution button.active[data-v="foreign"]{ color: #7db4ff; border-bottom:2px solid #7db4ff; }
+  .seg.institution button.active[data-v="trust"]{ color: var(--amber); border-bottom:2px solid var(--amber); }
+  .seg.direction button.active[data-v="buy"]{ color: var(--buy); border-bottom:2px solid var(--buy); }
+  .seg.direction button.active[data-v="sell"]{ color: var(--sell); border-bottom:2px solid var(--sell); }
+
+  .topn{ display:flex; align-items:center; gap:8px; }
+  .topn span{ font-size:12px; color:var(--sub); font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  .topn .seg{ flex:1; }
+  .topn .seg button{ font-family:'IBM Plex Mono',monospace; font-size:13px; }
+
+  /* pill buttons（改動四） */
+  .seg.pill{ background:transparent; border:none; gap:8px; justify-content:flex-start; overflow:visible; }
+  .seg.pill button{
+    flex:none; border-radius:999px; border:1px solid var(--line); background:transparent;
+    color:var(--sub); padding:8px 16px; font-size:13px;
+  }
+  .seg.pill button.active{ background:var(--text); color:var(--bg); border-color:var(--text); }
+  .seg.direction.pill button.active[data-v="buy"],
+  .seg.direction.pill button.active[data-v="sell"]{
+    border:1px solid var(--text); color:var(--bg);
+  }
+
+  /* table */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow:hidden;
+  }
+  .panel-head{
+    padding: 12px 14px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+    background: var(--panel-2);
+  }
+  .panel-head .title{ font-weight:700; font-size:14px; }
+  .panel-head .title .n{ font-family:'IBM Plex Mono',monospace; color:var(--sub); font-weight:500; }
+  .panel-head .unit{ font-size:11px; color:var(--sub); font-family:'IBM Plex Mono',monospace; }
+
+  table{ width:100%; border-collapse: collapse; }
+  thead th{
+    text-align:left; font-size:11px; color:var(--sub); font-weight:500;
+    padding: 8px 12px; border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace; letter-spacing:.5px;
+  }
+  thead th.num{ text-align:right; }
+  tbody td{ padding: 10px 12px; border-bottom:1px solid var(--line); font-size:14px; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background: rgba(255,255,255,0.02); }
+
+  td.rank{
+    font-family:'IBM Plex Mono',monospace; color:var(--sub); font-size:12px; width:30px;
+  }
+  tbody tr:nth-child(-n+3) td.rank{ color: var(--amber); font-weight:700; }
+
+  td.code{ font-family:'IBM Plex Mono',monospace; color:var(--sub); font-size:12px; }
+  td.name{ font-weight:700; }
+  td.amt{
+    text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;
+    font-variant-numeric: tabular-nums;
+  }
+  td.amt.buy{ color: var(--buy); }
+  td.amt.sell{ color: var(--sell); }
+
+  .bar-wrap{ display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+  .bar{ height:5px; border-radius:3px; min-width:2px; }
+  .bar.buy{ background: linear-gradient(90deg, var(--buy-dim), var(--buy)); }
+  .bar.sell{ background: linear-gradient(90deg, var(--sell-dim), var(--sell)); }
+
+  /* rank cards（改動三：個股排行卡片化） */
+  .rank-cards{ display:flex; flex-direction:column; gap:8px; padding:10px; }
+  .rank-card{
+    background: var(--panel-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .rank-card .rc-left{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .rank-card .rc-rank{ font-family:'IBM Plex Mono',monospace; color:var(--sub); font-size:12px; width:16px; flex-shrink:0; }
+  .rank-card.top3 .rc-rank{ color:var(--amber); font-weight:700; }
+  .rank-card .rc-name-wrap{ min-width:0; }
+  .rank-card .rc-name{ font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rank-card .rc-code{ font-family:'IBM Plex Mono',monospace; color:var(--sub); font-size:11px; margin-top:1px; }
+  .rank-card .rc-right{ text-align:right; flex-shrink:0; }
+  .rank-card .rc-amt{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+  .rank-card .rc-amt.buy{ color:var(--buy); }
+  .rank-card .rc-amt.sell{ color:var(--sell); }
+  .rank-card .rc-amt-label{ font-size:9.5px; color:var(--sub); margin-top:2px; font-family:'IBM Plex Mono',monospace; }
+
+  /* institutional total strip */
+  .inst-total{
+    display:flex; gap:8px; margin-top:14px;
+  }
+  .inst-card{
+    flex:1; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px;
+  }
+  .inst-card .ic-label{
+    font-size:11px; color:var(--sub); margin-bottom:4px;
+    font-family:'IBM Plex Mono',monospace; letter-spacing:.3px;
+  }
+  .inst-card .ic-val{
+    font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700;
+    font-variant-numeric:tabular-nums; line-height:1.2;
+  }
+  .inst-card .ic-val.buy{ color:var(--buy); }
+  .inst-card .ic-val.sell{ color:var(--sell); }
+  .inst-card .ic-dir{
+    font-size:10.5px; margin-top:3px; font-family:'IBM Plex Mono',monospace;
+  }
+  .inst-card .ic-dir.buy{ color:var(--buy); }
+  .inst-card .ic-dir.sell{ color:var(--sell); }
+
+  .flow-section{ margin-top:18px; }
+  .flow-section-title{
+    font-size:11px; color:var(--sub); font-family:'IBM Plex Mono',monospace;
+    margin-bottom:6px; letter-spacing:.3px;
+  }
+  .flow-wrap{
+    background:var(--card); border-radius:10px; padding:12px 10px 6px;
+    overflow:hidden;
+  }
+  .flow-legend{
+    display:flex; gap:14px; justify-content:center; align-items:center;
+    font-size:10px; color:var(--sub); font-family:'IBM Plex Mono',monospace;
+    margin-top:6px;
+  }
+  .flow-legend span{ display:flex; align-items:center; gap:4px; }
+  .flow-legend i{ display:inline-block; width:9px; height:9px; border-radius:2px; flex-shrink:0; }
+
+  footer{
+    margin-top: 22px; padding-top:14px; border-top:1px dashed var(--line);
+    font-size: 11.5px; color: var(--sub); line-height:1.7;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  footer b{ color: var(--text); }
+
+  /* ===== 手機版 UI 新增（頂部指數列／底部分頁／重點提示卡）===== */
+
+  /* 改動二：頂部常駐指數列 */
+  .top-stat-bar{
+    position: sticky; top: 0; z-index: 50;
+    display:flex; align-items:center; gap:16px;
+    background: var(--panel); border:1px solid var(--line); border-radius: 8px;
+    padding: 9px 14px; margin-bottom: 16px;
+  }
+  .top-stat-bar .tsb-item{ display:flex; align-items:baseline; gap:6px; }
+  .top-stat-bar .tsb-label{ font-size:11px; color:var(--sub); font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
+  .top-stat-bar .tsb-val{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; color:var(--text); }
+  .top-stat-bar .tsb-val.buy{ color:var(--buy); }
+  .top-stat-bar .tsb-val.sell{ color:var(--sell); }
+  .top-stat-bar .tsb-sep{ width:1px; height:16px; background:var(--line); flex-shrink:0; }
+
+  /* 改動一：底部固定導覽列 */
+  .bottom-nav{
+    position: fixed; left:0; right:0; bottom:0; z-index:100;
+    display:flex; background: var(--panel); border-top:1px solid var(--line);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav button{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:transparent; border:none; color:var(--sub); cursor:pointer;
+    padding:6px 2px; font-family:'Noto Sans TC',sans-serif; font-size:10px; font-weight:700;
+    border-radius:8px; transition:.15s;
+  }
+  .bottom-nav button svg{ display:block; }
+  .bottom-nav button.active{ color: var(--text); background: var(--panel-2); }
+
+  /* 改動四：重點提示卡 */
+  .highlight-card{
+    background: var(--panel); border-left:3px solid var(--sub);
+    border-radius:8px; padding:10px 12px; margin: 4px 0 4px;
+  }
+  .highlight-card.buy{ border-left-color: var(--buy); }
+  .highlight-card.sell{ border-left-color: var(--sell); }
+  .highlight-card .hl-main{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:14px; }
+  .highlight-card .hl-main b{ font-family:'IBM Plex Mono',monospace; }
+  .highlight-card.buy .hl-main b{ color:var(--buy); }
+  .highlight-card.sell .hl-main b{ color:var(--sell); }
+  .hl-badge{
+    font-size:10px; padding:2px 7px; border-radius:20px; background:var(--panel-2);
+    border:1px solid var(--line); color:var(--sub); font-family:'IBM Plex Mono',monospace; white-space:nowrap;
+  }
+  .hl-note{ margin-top:6px; font-size:10.5px; color:var(--sub); line-height:1.5; font-family:'IBM Plex Mono',monospace; }
+
+  /* 資料來源授權說明 */
+  .license-note{
+    margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);
+    font-size: 11px; color: var(--sub); line-height:1.7;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .license-note b{ color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top-stat-bar" id="topStatBar">
+    <div class="tsb-item">
+      <span class="tsb-label">外資買賣超</span>
+      <span class="tsb-val buy" id="topForeignVal">+454.5億</span>
+    </div>
+    <div class="tsb-sep"></div>
+    <div class="tsb-item">
+      <span class="tsb-label">USD/TWD</span>
+      <span class="tsb-val" id="topFxVal">31.852</span>
+    </div>
+  </div>
+
+  <header>
+    <div class="eyebrow" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>INSTITUTIONAL FLOW TRACKER · 台股三大法人</span>
+      <a href="industry-revenue.html" style="font-size:11px;color:#58a6ff;text-decoration:none;font-family:'IBM Plex Mono',monospace;">電子產業月營收 →</a>
+    </div>
+    <h1>外資 / 投信 買賣超追蹤 <span class="date" id="dateLabel">2026-08-18</span></h1>
+    <div class="fx-strip">
+      <div class="fx-top">
+        <span class="fx-label">USD/TWD</span>
+        <span class="fx-price" id="fxPrice">32.278</span>
+        <span class="fx-delta up" id="fxDelta">▲ 0.047（+0.15%）台幣貶值</span>
+        <span class="fx-note">TAIFEX 每日外幣參考匯率<br>收盤價</span>
+      </div>
+      <div class="fx-spark-wrap">
+        <div class="fx-spark-label">
+          <span id="fxSparkMin">近30日低 31.874</span>
+          <span>近30日走勢</span>
+          <span id="fxSparkMax">近30日高 32.454</span>
+        </div>
+        <svg id="fxSparkSvg" viewBox="0 0 700 60" preserveAspectRatio="none" style="width:100%; height:50px; display:block;"></svg>
+      </div>
+    </div>
+    <div class="demo-flag" style="color:var(--sell); border-color:#1c4a34;">✅ 外資／投信買賣超、期貨淨未平倉、USD/TWD 匯率均為 <b>2026/08/18</b> 真實資料</div>
+  </header>
+
+  <section class="tab-panel" id="tab-overview" data-tab="overview">
+    <div class="inst-total">
+      <div class="inst-card" id="cardForeign">
+        <div class="ic-label">外資及陸資</div>
+        <div class="ic-val buy">+223.3億</div>
+        <div class="ic-dir buy">買超</div>
+      </div>
+      <div class="inst-card" id="cardTrust">
+        <div class="ic-label">投信</div>
+        <div class="ic-val buy">+32.2億</div>
+        <div class="ic-dir buy">買超</div>
+      </div>
+      <div class="inst-card" id="cardDealer">
+        <div class="ic-label">自營商</div>
+        <div class="ic-val buy">+24.6億</div>
+        <div class="ic-dir buy">買超</div>
+      </div>
+    </div>
+
+    <div class="flow-section">
+      <div class="flow-section-title">近30交易日 三大法人每日買賣超金額（億元）</div>
+      <div class="flow-wrap">
+        <svg id="flowChartSvg" viewBox="0 0 700 165" preserveAspectRatio="none" style="width:100%;height:145px;display:block;overflow:visible;"></svg>
+        <div class="flow-legend">
+          <span id="legF" onclick="toggleFlow('f')" style="cursor:pointer"><i style="background:#5b9bd5"></i>外資及陸資</span>
+          <span id="legT" onclick="toggleFlow('t')" style="cursor:pointer"><i style="background:#9b59b6"></i>投信</span>
+          <span id="legD" onclick="toggleFlow('d')" style="cursor:pointer"><i style="background:#e07b54"></i>自營商</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="tab-ranking" data-tab="ranking" style="display:none;">
+    <div class="highlight-card buy" id="highlightCard">
+      <div class="hl-main">
+        <span id="highlightText">外資今日全部 <b>淨買超 454.5億</b></span>
+        <span class="hl-badge">全市場官方</span>
+      </div>
+      <div class="hl-note">註：本卡金額為三大法人整體買賣超（來源 TWSE BFI82U），下方個股排行為 TWSE T86 個股買賣超股數計算，兩份官方報表統計口徑不同，加總數字不會完全一致。</div>
+    </div>
+
+    <div class="controls">
+      <div class="row">
+        <div class="seg institution" id="segInst">
+          <button data-v="foreign" class="active">外資及陸資</button>
+          <button data-v="trust">投信</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="seg direction pill" id="segDir">
+          <button data-v="buy" class="active">買超</button>
+          <button data-v="sell">賣超</button>
+        </div>
+      </div>
+      <div class="topn">
+        <span>累積期間</span>
+        <div class="seg pill" id="segPeriod">
+          <button data-v="d1" class="active">1日</button>
+          <button data-v="d5">5日</button>
+          <button data-v="d15">15日</button>
+        </div>
+      </div>
+      <div class="topn">
+        <span>排行依據</span>
+        <div class="seg pill" id="segMetric">
+          <button data-v="lots" class="active">買賣超張數</button>
+          <button data-v="amt">買賣超金額(估)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="title"><span id="titleInst">外資及陸資</span> <span id="titleDir">買超</span> <span id="titlePeriod">1日</span>累積 Top 15</div>
+        <div class="unit" id="rankUnit">單位：張</div>
+      </div>
+      <div class="rank-cards" id="tbody"></div>
+    </div>
+    <div class="hl-note" style="margin-top:6px;">金額(估) = 買賣超張數 × 當日收盤價，非三大法人實際成交金額，僅供排序參考。</div>
+  </section>
+
+  <section class="tab-panel" id="tab-macro" data-tab="macro" style="display:none;">
+    <div class="panel chart-panel">
+      <div class="panel-head">
+        <div class="title">外資 臺股期貨 淨未平倉（近一個月）</div>
+        <div class="unit">單位：口</div>
+      </div>
+      <div class="chart-meta">
+        <div>
+          <div class="latest" id="chartLatest">-88,924</div>
+          <div class="latest-label" id="chartLatestLabel">最新一日 · 淨空單（口）</div>
+        </div>
+        <div class="chg less-short" id="chartChg">
+          +277<span class="chg-label">當日增減（口）</span>
+        </div>
+      </div>
+      <div class="chart-svg-wrap">
+        <svg id="fxChart" viewBox="0 0 700 200" preserveAspectRatio="none" style="width:100%; height:180px; display:block;"></svg>
+      </div>
+      <div class="chart-xaxis">
+        <span id="chartXStart">07/01</span>
+        <span id="chartXEnd">08/11</span>
+      </div>
+      <div class="chart-legend">
+        <span><span class="dot" style="background:var(--sell)"></span>正值＝淨多單</span>
+        <span><span class="dot" style="background:var(--buy)"></span>負值＝淨空單</span>
+        <span>虛線＝0 軸（多空分界）</span>
+      </div>
+    </div>
+
+    <div class="panel chart-panel" style="margin-top:16px;">
+      <div class="panel-head">
+        <div class="title">全市場融資餘額趨勢（近一個月）</div>
+        <div class="unit">單位：萬張</div>
+      </div>
+      <div class="chart-meta">
+        <div>
+          <div class="latest" id="marginLatest" style="color:var(--amber)">896</div>
+          <div class="latest-label" id="marginLatestLabel">最新 · 全市場融資餘額（萬張）</div>
+        </div>
+        <div class="chg less-short" id="marginChg">-1<span class="chg-label">當日增減（萬張）</span></div>
+      </div>
+      <div class="chart-svg-wrap">
+        <svg id="marginChartSvg" viewBox="0 0 700 200" preserveAspectRatio="none" style="width:100%; height:180px; display:block;"></svg>
+      </div>
+      <div class="chart-xaxis">
+        <span id="marginXStart">--</span>
+        <span id="marginXEnd">--</span>
+      </div>
+      <div class="chart-legend">
+        <span><span class="dot" style="background:var(--amber)"></span>融資餘額（萬張）</span>
+        <span style="font-size:10px;color:var(--sub);font-family:'IBM Plex Mono',monospace">↑ 增 = 資金進場 · ↓ 減 = 資金退場</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <b>全市場融資餘額</b>：來源 TWSE MI_MARGN，資料日期 <b>2026/08/18</b>（887 萬張，當日增減 -5 萬張）<br>
+    <b>三大法人總買賣超金額</b>：來源 TWSE BFI82U，資料日期 <b>2026/08/18</b>（外資 -119.9億、投信 +38.3億、自營商 -176.1億）<br>
+    <b>外資／投信買賣超排行</b>：來源 TWSE T86；1日 = 2026/08/18，5日 = 08/12–08/18，15日 = 07/29–08/18<br>
+    <b>外資臺股期貨淨未平倉</b>：來源 TAIFEX，資料日期 <b>2026/07/07–08/18</b>（30個交易日真實資料，07/10為非交易日；最新 83,078 口淨空單）<br>
+    <b>USD/TWD 匯率</b>：來源 TAIFEX，資料日期 <b>2026/08/18</b>（31.945 元）<br>
+    單位：個股買賣超為「張」；法人總金額為「億元」；期貨為「口」；匯率為「元」<br>
+    更新方式：由 Claude 排程每日自動抓取官方資料更新
+  </footer>
+
+  <div class="license-note">
+    <b>資料來源</b><br>
+    本站採用臺灣證券交易所、財團法人中華民國證券櫃檯買賣中心、臺灣集中保管結算所之公開資料（每日收盤行情、三大法人買賣超、融資融券餘額、集保戶股權分散表），依政府資料開放授權條款第 1 版利用。每交易日收盤後更新。
+  </div>
+
+</div>
+
+<nav class="bottom-nav" id="bottomNav">
+  <button id="nav-overview" class="active" onclick="switchTab('overview')">
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6" rx="1"/><rect x="11.5" y="2.5" width="6" height="6" rx="1"/><rect x="2.5" y="11.5" width="6" height="6" rx="1"/><rect x="11.5" y="11.5" width="6" height="6" rx="1"/></svg>
+    <span>總覽</span>
+  </button>
+  <button id="nav-foreign" onclick="switchTab('foreign')">
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5v9"/><path d="M6 8l4 4 4-4"/><path d="M3 14.5v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
+    <span>外資排行</span>
+  </button>
+  <button id="nav-trust" onclick="switchTab('trust')">
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8l7.5-5 7.5 5"/><path d="M4 8v7.5"/><path d="M7.5 8v7.5"/><path d="M12.5 8v7.5"/><path d="M16 8v7.5"/><path d="M2.5 15.5h15"/></svg>
+    <span>投信排行</span>
+  </button>
+  <button id="nav-macro" onclick="switchTab('macro')">
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 15.5l4.5-5 3.5 3 6-7.5"/><path d="M13 5.5h3.5V9"/></svg>
+    <span>期貨／匯率</span>
+  </button>
+</nav>
+
+<script>
+// ===== 真實資料 2026/08/18（來源：TWSE T86，1日/5日/15日累積）=====
+const DEMO = {
+  foreign: {
+    buy: {
+      d1: [["00981A","主動統一台股增長",35620,null],["00403A","主動統一升級50",23751,null],["00991A","主動復華未來50",21878,null],["2603","長榮",15066,null],["2634","漢翔",14816,null],["2609","陽明",14344,null],["2867","三商壽",13409,null],["2881","富邦金",10802,null],["8105","凌巨",10694,null],["3037","欣興",10676,null],["6505","台塑化",10209,null],["2886","兆豐金",10202,null],["2618","長榮航",10175,null],["2542","興富發",9866,null],["2301","光寶科",9583,null]],
+      d5: [["00403A","主動統一升級50",291405,null],["00981A","主動統一台股增長",258856,null],["6770","力積電",212242,null],["2324","仁寶",128244,null],["00991A","主動復華未來50",116626,null],["00407A","主動凱基台灣",92218,null],["009816","凱基台灣TOP50",66563,null],["1605","華新",65531,null],["0050","元大台灣50",65414,null],["2027","大成鋼",59102,null],["00992A","主動群益科技創新",52065,null],["2886","兆豐金",49477,null],["2634","漢翔",48162,null],["2603","長榮",45765,null],["00400A","主動國泰動能高息",43933,null]],
+      d15: [["00981A","主動統一台股增長",717206,null],["00403A","主動統一升級50",580540,null],["00991A","主動復華未來50",445168,null],["009816","凱基台灣TOP50",293455,null],["00631L","元大台灣50正2",217342,null],["00632R","元大台灣50反1",216737,null],["6770","力積電",193395,null],["00992A","主動群益科技創新",182038,null],["2324","仁寶",178649,null],["2618","長榮航",156146,null],["00405A","主動富邦台灣龍耀",144583,null],["1605","華新",138407,null],["0050","元大台灣50",127200,null],["1216","統一",126798,null],["2408","南亞科",126686,null]]
+    },
+    sell: {
+      d1: [["6770","力積電",-35767,null],["2409","友達",-32024,null],["3481","群創",-29692,null],["2887","台新新光金",-27654,null],["2883","凱基金",-27235,null],["2885","元大金",-21673,null],["0050","元大台灣50",-16101,null],["2884","玉山金",-14427,null],["4958","臻鼎-KY",-8751,null],["2890","永豐金",-8149,null],["9105","泰金寶-DR",-8025,null],["2317","鴻海",-7860,null],["3231","緯創",-7515,null],["2481","強茂",-7306,null],["2610","華航",-7190,null]],
+      d5: [["2884","玉山金",-68624,null],["2610","華航",-53389,null],["2885","元大金",-39217,null],["2883","凱基金",-38263,null],["2834","臺企銀",-38055,null],["2002","中鋼",-35399,null],["2327","國巨*",-32605,null],["00878","國泰永續高股息",-32262,null],["5388","中磊",-28830,null],["2492","華新科",-28245,null],["2887","台新新光金",-22702,null],["4958","臻鼎-KY",-20751,null],["2890","永豐金",-19603,null],["2317","鴻海",-17817,null],["8150","南茂",-16934,null]],
+      d15: [["2834","臺企銀",-155715,null],["2303","聯電",-95211,null],["1303","南亞",-80377,null],["2801","彰銀",-77530,null],["2409","友達",-76648,null],["3481","群創",-74386,null],["2880","華南金",-71857,null],["2812","台中銀",-70199,null],["2610","華航",-69595,null],["00878","國泰永續高股息",-57775,null],["1718","中纖",-57476,null],["2327","國巨*",-56833,null],["2884","玉山金",-52762,null],["2492","華新科",-49742,null],["2449","京元電子",-45653,null]]
+    }
+  },
+  trust: {
+    buy: {
+      d1: [["2887","台新新光金",25106,null],["2883","凱基金",22147,null],["2884","玉山金",18674,null],["2890","永豐金",13974,null],["2892","第一金",13662,null],["3481","群創",13592,null],["2886","兆豐金",12352,null],["5880","合庫金",12003,null],["2880","華南金",11612,null],["2412","中華電",4381,null],["2301","光寶科",3148,null],["3706","神達",2178,null],["3532","台勝科",2131,null],["8070","長華*",2063,null],["2377","微星",1984,null]],
+      d5: [["2887","台新新光金",86294,null],["2883","凱基金",78374,null],["2884","玉山金",62059,null],["2890","永豐金",45692,null],["2892","第一金",45021,null],["2886","兆豐金",41376,null],["2880","華南金",32258,null],["5880","合庫金",30007,null],["3481","群創",14008,null],["4938","和碩",8685,null],["2368","金像電",6291,null],["3532","台勝科",6123,null],["2412","中華電",6014,null],["2633","台灣高鐵",5661,null],["2542","興富發",5481,null]],
+      d15: [["2883","凱基金",112825,null],["2887","台新新光金",100463,null],["2880","華南金",96585,null],["2886","兆豐金",81116,null],["00980A","主動野村臺灣優選",69131,null],["2884","玉山金",66655,null],["2892","第一金",63647,null],["2890","永豐金",48377,null],["5880","合庫金",39397,null],["0050","元大台灣50",36154,null],["2882","國泰金",19437,null],["2885","元大金",17099,null],["4938","和碩",14230,null],["2881","富邦金",13281,null],["3037","欣興",12889,null]]
+    },
+    sell: {
+      d1: [["2337","旺宏",-17860,null],["6505","台塑化",-9538,null],["2317","鴻海",-4371,null],["3711","日月光投控",-3878,null],["2885","元大金",-2958,null],["2027","大成鋼",-2300,null],["6531","愛普*",-1754,null],["3036","文曄",-1639,null],["3702","大聯大",-1593,null],["2449","京元電子",-1359,null],["2891","中信金",-1262,null],["2610","華航",-1219,null],["2454","聯發科",-1154,null],["2316","楠梓電",-1149,null],["2881","富邦金",-1106,null]],
+      d5: [["2344","華邦電",-36522,null],["2303","聯電",-32360,null],["2337","旺宏",-27199,null],["2027","大成鋼",-22511,null],["3711","日月光投控",-18337,null],["8150","南茂",-11023,null],["3231","緯創",-9565,null],["6505","台塑化",-9533,null],["2317","鴻海",-8430,null],["0050","元大台灣50",-7235,null],["2891","中信金",-6568,null],["8028","昇陽半導體",-3806,null],["2449","京元電子",-3580,null],["2454","聯發科",-3330,null],["3036","文曄",-3310,null]],
+      d15: [["2303","聯電",-52157,null],["2344","華邦電",-34697,null],["8150","南茂",-19217,null],["00988A","主動統一全球創新",-15076,null],["2027","大成鋼",-14165,null],["00947","台新臺灣IC設計",-11650,null],["6505","台塑化",-8876,null],["2337","旺宏",-8784,null],["2618","長榮航",-7397,null],["3711","日月光投控",-6869,null],["8028","昇陽半導體",-6176,null],["6415","矽力*-KY",-5758,null],["1216","統一",-5331,null],["2317","鴻海",-5067,null],["3090","日電貿",-4639,null]]
+    }
+  }
+};
+
+let state = { inst: "foreign", dir: "buy", period: "d1", metric: "lots" };
+
+function fmt(n){
+  const sign = n >= 0 ? "+" : "";
+  return sign + n.toLocaleString("en-US");
+}
+
+// ===== 改動一：底部分頁切換（顯示/隱藏區塊，不重新載入）=====
+function switchTab(key){
+  var panelIdOf = { overview:"tab-overview", foreign:"tab-ranking", trust:"tab-ranking", macro:"tab-macro" };
+  ["tab-overview","tab-ranking","tab-macro"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = "none";
+  });
+  var showEl = document.getElementById(panelIdOf[key]);
+  if(showEl) showEl.style.display = "";
+
+  if(key === "foreign" || key === "trust"){
+    state.inst = key;
+    render();
+  }
+
+  document.querySelectorAll(".bottom-nav button").forEach(function(b){ b.classList.remove("active"); });
+  var navBtn = document.getElementById("nav-" + key);
+  if(navBtn) navBtn.classList.add("active");
+
+  window.scrollTo(0, 0);
+}
+
+function render(){
+  const list = DEMO[state.inst][state.dir][state.period].slice();
+  const cls = state.dir === "buy" ? "buy" : "sell";
+
+  if(state.metric === "amt"){
+    list.sort((a, b) => {
+      const av = a[3], bv = b[3];
+      if(av == null && bv == null) return 0;
+      if(av == null) return 1;
+      if(bv == null) return -1;
+      return state.dir === "buy" ? (bv - av) : (av - bv);
+    });
+  }
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  list.forEach((row, i) => {
+    const [code, name, lots, amtMoney] = row;
+    const lotsText = fmt(lots) + " 張";
+    const amtText = amtMoney != null ? fmtYi(amtMoney) + "(估)" : "資料不足";
+    const primary = state.metric === "amt" ? amtText : lotsText;
+    const secondary = state.metric === "amt" ? lotsText : (amtMoney != null ? "約 " + amtText : "");
+    const card = document.createElement("div");
+    card.className = "rank-card" + (i < 3 ? " top3" : "");
+    card.innerHTML = `
+      <div class="rc-left">
+        <span class="rc-rank">${i + 1}</span>
+        <div class="rc-name-wrap">
+          <div class="rc-name">${name}</div>
+          <div class="rc-code">${code}</div>
+        </div>
+      </div>
+      <div class="rc-right">
+        <div class="rc-amt ${cls}">${primary}</div>
+        <div class="rc-amt-label">${secondary}</div>
+      </div>`;
+    tbody.appendChild(card);
+  });
+
+  document.getElementById("titleInst").textContent = state.inst === "foreign" ? "外資及陸資" : "投信";
+  document.getElementById("titleDir").textContent = state.dir === "buy" ? "買超" : "賣超";
+  const periodLabel = { d1: "1日", d5: "5日", d15: "15日" }[state.period];
+  document.getElementById("titlePeriod").textContent = periodLabel;
+  const unitEl = document.getElementById("rankUnit");
+  if(unitEl) unitEl.textContent = state.metric === "amt" ? "單位：億元(估)" : "單位：張";
+
+  updateHighlight();
+}
+
+// ===== 改動四：重點提示卡（讀取既有 TOTAL 變數，與主內容同步）=====
+function updateHighlight(){
+  const box = document.getElementById("highlightCard");
+  const txt = document.getElementById("highlightText");
+  if(!box || !txt || typeof TOTAL === "undefined") return;
+  const val = state.inst === "foreign" ? TOTAL.foreign : TOTAL.trust;
+  const instLabel = state.inst === "foreign" ? "外資" : "投信";
+  const isBuy = val >= 0;
+  txt.innerHTML = instLabel + "今日全部 <b>" + (isBuy ? "淨買超" : "淨賣超") + " " + (Math.abs(val)/1e8).toFixed(1) + "億</b>";
+  box.className = "highlight-card " + (isBuy ? "buy" : "sell");
+}
+
+function bindSeg(id, key, isNumber){
+  const el = document.getElementById(id);
+  el.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      el.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state[key] = isNumber ? parseInt(btn.dataset.v, 10) : btn.dataset.v;
+      render();
+    });
+  });
+}
+bindSeg("segInst", "inst", false);
+bindSeg("segDir", "dir", false);
+bindSeg("segPeriod", "period", false);
+bindSeg("segMetric", "metric", false);
+
+// ===== 盤後三大法人總買賣超金額 (BFI82U) =====
+// 外資 = 外資及陸資(不含外資自營商) 買賣差額；自營商 = 自行買賣 + 避險 合計
+const TOTAL = { date:"2026/08/18", foreign:-11985811420, trust:3827137607, dealer:-17607142501 };
+
+function fmtYi(n){ const sign = n>=0?"+":"-"; return sign+(Math.abs(n)/1e8).toFixed(1)+"億"; }
+
+(function renderTotal(){
+  [["cardForeign",TOTAL.foreign],["cardTrust",TOTAL.trust],["cardDealer",TOTAL.dealer]].forEach(function(item){
+    var card = document.getElementById(item[0]); if(!card) return;
+    var val = item[1]; var isBuy = val>=0; var cls = isBuy?"buy":"sell";
+    card.querySelector(".ic-val").textContent = fmtYi(val);
+    card.querySelector(".ic-val").className = "ic-val "+cls;
+    card.querySelector(".ic-dir").textContent = isBuy?"買超":"賣超";
+    card.querySelector(".ic-dir").className = "ic-dir "+cls;
+  });
+
+  // 改動二：同步頂部常駐指數列 — 外資買賣超
+  var topEl = document.getElementById("topForeignVal");
+  if(topEl){
+    var v = TOTAL.foreign, isBuy = v>=0;
+    topEl.textContent = fmtYi(v);
+    topEl.className = "tsb-val " + (isBuy?"buy":"sell");
+  }
+})();
+
+// render() 需在 TOTAL 宣告之後才呼叫（updateHighlight 會讀取 TOTAL）
+render();
+
+// ===== 近30交易日 三大法人每日買賣超金額 (BFI82U) =====
+// 07/01–08/11，07/10 為非交易日略過，單位：NT$ 元
+const TOTAL_DATES   = ["07/07","07/08","07/09","07/13","07/14","07/15","07/16","07/17","07/20","07/21","07/22","07/23","07/24","07/27","07/28","07/29","07/30","07/31","08/03","08/04","08/05","08/06","08/07","08/10","08/11","08/12","08/13","08/14","08/17","08/18"];
+const TOTAL_FOREIGN = [-54731070648,-37948987989,-47252816429,-19559763888,-51892812507,-1415388772,-48334970779,-188314549057,-6083677676,-4331862847,17343992601,6957913275,-60950489295,8040249858,-87484625299,-22251858551,-48311819675,67553825161,-19190915634,-5731532826,90308325824,2019818140,-40715743790,51740515132,22328683295,11020811994,75694516575,45351330421,45447285026,-11985811420];
+const TOTAL_TRUST   = [19900600663,12578555606,11001561256,12536287746,8645131851,7347365087,16321796929,17113931143,18902892146,7370034536,4763491262,481268077,1611819893,5705652231,13997412733,36020110243,23324680573,27165160060,11266142456,9408386624,-1201721402,3401069421,3224067733,2800740398,969277,7196319190,-17746662101,-17776851185,5662738427,3827137607];
+const TOTAL_DEALER  = [-48733477692,-16942740236,-7671165811,-11098303301,-38291146262,10126103647,-3357605729,-82179494166,-8064443489,3507395188,-2397995157,4193904768,-11151495033,-7856984424,-31729733512,-18599014431,-15226533793,-16259524590,-20653372342,-19428736709,1456667142,-6312818587,-968071874,18468154345,2460139602,8700668735,15060751405,-1661188109,1405302916,-17607142501];
+
+var flowVis={f:true,t:true,d:true};
+
+function drawFlowChart(){
+  var svg=document.getElementById("flowChartSvg"); if(!svg)return;
+  var W=700,H=165,ml=46,mr=8,mt=10,mb=28;
+  var cW=W-ml-mr,cH=H-mt-mb,n=TOTAL_DATES.length;
+  var F=TOTAL_FOREIGN.map(function(v){return v/1e8;});
+  var T=TOTAL_TRUST.map(function(v){return v/1e8;});
+  var D=TOTAL_DEALER.map(function(v){return v/1e8;});
+  var vis=[flowVis.f,flowVis.t,flowVis.d];
+  // range based on visible series only (so scale tightens when you hide 外資)
+  var maxV=0,minV=0;
+  for(var i=0;i<n;i++){
+    var pos=0,neg=0;
+    [[F[i],0],[T[i],1],[D[i],2]].forEach(function(kv){
+      if(!vis[kv[1]])return;
+      if(kv[0]>=0)pos+=kv[0]; else neg+=kv[0];
+    });
+    if(pos>maxV)maxV=pos; if(neg<minV)minV=neg;
+  }
+  if(maxV===0&&minV===0){maxV=100;minV=-100;}
+  var pad=(maxV-minV)*0.05; maxV+=pad; minV-=pad;
+  var range=maxV-minV;
+  var y0=mt+(maxV/range)*cH;
+  function toY(v){return mt+((maxV-v)/range)*cH;}
+  var barW=cW/n,gap=barW*0.12,bw=barW-gap*2;
+  var cols=["#5b9bd5","#9b59b6","#e07b54"];
+  var html="";
+  // dynamic ticks
+  var absMax=Math.max(Math.abs(maxV),Math.abs(minV));
+  var step=absMax>1200?500:absMax>400?200:absMax>100?50:20;
+  var tv=Math.ceil(minV/step)*step;
+  for(;tv<=maxV;tv+=step){
+    var y=toY(tv); var isZ=(tv===0);
+    html+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="'+(isZ?1:.5)+'" opacity="'+(isZ?.9:.4)+'"/>';
+    html+='<text x="'+(ml-3)+'" y="'+(y+3.5)+'" text-anchor="end" font-size="8.5" fill="var(--sub)" font-family="IBM Plex Mono,monospace">'+tv+'</text>';
+  }
+  // bars
+  for(var i=0;i<n;i++){
+    var x=ml+i*barW+gap;
+    var vals=[F[i],T[i],D[i]];
+    var yPos=y0,yNeg=y0;
+    for(var j=0;j<3;j++){
+      if(!vis[j])continue;
+      var v=vals[j]; if(v===0)continue;
+      var h=(Math.abs(v)/range)*cH;
+      if(v>0){html+='<rect x="'+x+'" y="'+(yPos-h)+'" width="'+bw+'" height="'+h+'" fill="'+cols[j]+'" opacity=".88"/>'; yPos-=h;}
+      else{html+='<rect x="'+x+'" y="'+yNeg+'" width="'+bw+'" height="'+h+'" fill="'+cols[j]+'" opacity=".88"/>'; yNeg+=h;}
+    }
+    if(i===0||i===n-1||i===6||i===13||i===20){
+      html+='<text x="'+(x+bw/2)+'" y="'+(H-mb+11)+'" text-anchor="middle" font-size="8" fill="var(--sub)" font-family="IBM Plex Mono,monospace">'+TOTAL_DATES[i]+'</text>';
+    }
+  }
+  svg.innerHTML=html;
+}
+
+function toggleFlow(k){
+  flowVis[k]=!flowVis[k];
+  var ids={f:"legF",t:"legT",d:"legD"};
+  var el=document.getElementById(ids[k]);
+  if(el)el.style.opacity=flowVis[k]?"1":"0.3";
+  drawFlowChart();
+}
+
+drawFlowChart();
+
+// ===== 外資臺股期貨淨未平倉 — 近一個月 =====
+// 全部為真實數字（來源：TAIFEX 三大法人-區分各期貨契約-依日期），07/10 為非交易日已略過
+// 正值 = 淨多單, 負值 = 淨空單。單位：口。07/01–08/12，共30個交易日
+const FUT_DATES = ["07/07","07/08","07/09","07/13","07/14","07/15","07/16","07/17","07/20","07/21","07/22","07/23","07/24","07/27","07/28","07/29","07/30","07/31","08/03","08/04","08/05","08/06","08/07","08/10","08/11","08/12","08/13","08/14","08/17","08/18"];
+const FUT_DEMO = [-80042,-81268,-80730,-81066,-83390,-79557,-84453,-86189,-78337,-78490,-76595,-75198,-76260,-78699,-82255,-82785,-81017,-82515,-90038,-87858,-87199,-89383,-87911,-89201,-88924,-86633,-86249,-85179,-83474,-83078];
+
+function niceStep(range){
+  const rough = range / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  let step;
+  if(norm < 1.5) step = 1*mag;
+  else if(norm < 3.5) step = 2*mag;
+  else if(norm < 7.5) step = 5*mag;
+  else step = 10*mag;
+  return step;
+}
+
+function drawFutChart(data, dates){
+  const svg = document.getElementById("fxChart");
+  const W = 700, H = 200, padT = 14, padB = 14, padL = 46, padR = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const rawMax = Math.max(...data, 0);
+  const rawMin = Math.min(...data, 0);
+  const step = niceStep(rawMax - rawMin || 1);
+  const max = Math.ceil(rawMax / step) * step;
+  const min = Math.floor(rawMin / step) * step;
+  const range = (max - min) || 1;
+
+  const x = i => padL + (i / (data.length - 1)) * plotW;
+  const y = v => padT + (1 - (v - min) / range) * plotH;
+  const zeroY = y(0);
+
+  const linePts = data.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const areaPts = `${x(0).toFixed(1)},${zeroY.toFixed(1)} ` + linePts + ` ${x(data.length-1).toFixed(1)},${zeroY.toFixed(1)}`;
+
+  const lastVal = data[data.length - 1];
+  const lineColor = lastVal < 0 ? "#ff5b5b" : "#35d38a";
+
+  // y 軸刻度（總口數）
+  let ticks = [];
+  for(let v = min; v <= max + 0.0001; v += step) ticks.push(Math.round(v));
+  const gridLines = ticks.map(t => {
+    const ty = y(t);
+    return `<line x1="${padL}" y1="${ty}" x2="${W-padR}" y2="${ty}" stroke="${t===0 ? '#3a4152' : '#232735'}" stroke-width="1" stroke-dasharray="${t===0 ? '4 4' : '0'}"/>
+      <text x="${padL-8}" y="${ty+3}" text-anchor="end" font-size="9.5" font-family="IBM Plex Mono, monospace" fill="#8891a3">${t.toLocaleString('en-US')}</text>`;
+  }).join("");
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="fadeArea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <polygon points="${areaPts}" fill="url(#fadeArea)"/>
+    <polyline points="${linePts}" fill="none" stroke="${lineColor}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(data.length-1)}" cy="${y(lastVal)}" r="4" fill="${lineColor}"/>
+  `;
+
+  const latestEl = document.getElementById("chartLatest");
+  const labelEl = document.getElementById("chartLatestLabel");
+  latestEl.textContent = (lastVal >= 0 ? "+" : "") + lastVal.toLocaleString("en-US");
+  latestEl.className = "latest" + (lastVal >= 0 ? " long" : "");
+  labelEl.textContent = "最新一日 · " + (lastVal < 0 ? "淨空單（口）" : "淨多單（口）");
+
+  // 當日增減
+  const prevVal = data[data.length - 2];
+  const diff = lastVal - prevVal;
+  const chgEl = document.getElementById("chartChg");
+  const diffText = (diff >= 0 ? "+" : "") + diff.toLocaleString("en-US");
+  chgEl.innerHTML = diffText + `<span class="chg-label">當日增減（口）</span>`;
+  // 空單增加（更負） → 紅；空單減少或翻多 → 綠
+  chgEl.className = "chg " + (diff < 0 ? "more-short" : "less-short");
+
+  if(dates && dates.length){
+    document.getElementById("chartXStart").textContent = dates[0];
+    document.getElementById("chartXEnd").textContent = dates[dates.length - 1];
+  }
+}
+drawFutChart(FUT_DEMO, FUT_DATES);
+
+// ===== USD/TWD 近30日走勢 — 真實資料（來源：TAIFEX 每日外幣參考匯率，2026/07/01–08/12）=====
+const FX_DEMO = [32.143,32.032,32.178,32.170,32.172,32.189,32.249,32.288,32.248,32.345,32.375,32.266,32.358,32.305,32.384,32.366,32.454,32.292,32.438,32.447,32.315,32.261,32.288,32.231,32.278,32.246,32.168,32.046,31.852,31.945];
+
+function drawFxSpark(data){
+  const svg = document.getElementById("fxSparkSvg");
+  const W = 700, H = 60, pad = 6;
+  const plotW = W - pad*2, plotH = H - pad*2;
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = (max - min) || 1;
+  const x = i => pad + (i/(data.length-1))*plotW;
+  const y = v => pad + (1 - (v-min)/range)*plotH;
+
+  const first = data[0], last = data[data.length-1];
+  const color = last >= first ? "#ff5b5b" : "#35d38a"; // 美元走升(貶台幣)紅／走貶(升台幣)綠
+
+  const linePts = data.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const areaPts = `${x(0).toFixed(1)},${(H-pad).toFixed(1)} ` + linePts + ` ${x(data.length-1).toFixed(1)},${(H-pad).toFixed(1)}`;
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="fxFade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.30"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${areaPts}" fill="url(#fxFade)"/>
+    <polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(data.length-1)}" cy="${y(last)}" r="3.5" fill="${color}"/>
+  `;
+
+  document.getElementById("fxSparkMin").textContent = "近30日低 " + min.toFixed(3);
+  document.getElementById("fxSparkMax").textContent = "近30日高 " + max.toFixed(3);
+
+  // 同步更新上方即時匯率與漲跌
+  const prev = data[data.length-2];
+  const diff = last - prev;
+  const pct = (diff/prev*100);
+  document.getElementById("fxPrice").textContent = last.toFixed(3);
+  const deltaEl = document.getElementById("fxDelta");
+  const arrow = diff >= 0 ? "▲" : "▼";
+  const dir = diff >= 0 ? "台幣貶值" : "台幣升值";
+  deltaEl.textContent = `${arrow} ${Math.abs(diff).toFixed(3)}（${diff>=0?'+':''}${pct.toFixed(2)}%）${dir}`;
+  deltaEl.className = "fx-delta " + (diff >= 0 ? "up" : "down");
+
+  // 改動二：同步頂部常駐指數列 — USD/TWD
+  const topFx = document.getElementById("topFxVal");
+  if(topFx){
+    topFx.textContent = last.toFixed(3);
+    topFx.className = "tsb-val " + (diff >= 0 ? "buy" : "sell");
+  }
+}
+drawFxSpark(FX_DEMO);
+
+// ===== 全市場融資餘額（TWSE MI_MARGN）=====
+// 單位：張；資料每日累積，初始為今日 + 前日兩筆
+const MARGIN_DATES = ["07/07", "07/08", "07/09", "07/13", "07/14", "07/15", "07/16", "07/17", "07/20", "07/21", "07/22", "07/23", "07/24", "07/27", "07/28", "07/29", "07/30", "07/31", "08/03", "08/04", "08/05", "08/06", "08/07", "08/10", "08/11", "08/12", "08/13", "08/14", "08/17", "08/18"];
+const MARGIN_BAL = [9661971, 9531898, 9590604, 9614953, 9602553, 9465643, 9519940, 9513578, 9348875, 9270954, 9359439, 9354572, 9349915, 9354810, 9272006, 9096013, 8764867, 8701432, 9144265, 9120700, 9032012, 8901189, 8958261, 8986437, 9003222, 8970583, 8961034, 8969841, 8918284, 8867617];
+
+function drawMarginChart(data, dates){
+  const svg = document.getElementById("marginChartSvg");
+  if(!svg || !data || data.length < 2) return;
+  const W=700, H=200, padT=14, padB=14, padL=52, padR=6;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+
+  // 轉換為萬張
+  const vals = data.map(function(v){ return v / 10000; });
+  const rawMax = Math.max.apply(null, vals);
+  const rawMin = Math.min.apply(null, vals);
+  const step = niceStep(rawMax - rawMin || rawMax * 0.02 || 1);
+  const max = Math.ceil(rawMax / step) * step;
+  const min = Math.floor(rawMin / step) * step;
+  const range = (max - min) || 1;
+
+  const xFn = function(i){ return padL + (i / (vals.length - 1)) * plotW; };
+  const yFn = function(v){ return padT + (1 - (v - min) / range) * plotH; };
+  const color = "#f0b429";
+
+  const linePts = vals.map(function(v,i){ return xFn(i).toFixed(1)+","+yFn(v).toFixed(1); }).join(" ");
+  const baseY = yFn(min).toFixed(1);
+  const areaPts = xFn(0).toFixed(1)+","+baseY+" "+linePts+" "+xFn(vals.length-1).toFixed(1)+","+baseY;
+
+  // Y 軸刻度
+  let gridLines = "";
+  for(let t = min; t <= max + 0.0001; t += step){
+    const tr = Math.round(t);
+    const ty = yFn(tr);
+    gridLines += '<line x1="'+padL+'" y1="'+ty.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+ty.toFixed(1)+'" stroke="#232735" stroke-width="1"/>';
+    gridLines += '<text x="'+(padL-8)+'" y="'+(ty+3.5).toFixed(1)+'" text-anchor="end" font-size="9.5" font-family="IBM Plex Mono,monospace" fill="#8891a3">'+tr+'</text>';
+  }
+
+  // X 軸標籤（顯示首、尾及中間幾個）
+  const n = vals.length;
+  let xLabels = "";
+  const showIdx = [0, Math.floor(n*0.33), Math.floor(n*0.66), n-1].filter(function(v,i,a){ return a.indexOf(v)===i; });
+  showIdx.forEach(function(i){
+    if(!dates[i]) return;
+    const tx = xFn(i);
+    xLabels += '<text x="'+tx.toFixed(1)+'" y="'+(H-padB+11)+'" text-anchor="middle" font-size="8" font-family="IBM Plex Mono,monospace" fill="#8891a3">'+dates[i]+'</text>';
+  });
+
+  const lastVal = vals[vals.length - 1];
+  svg.innerHTML = '<defs><linearGradient id="mgnFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'
+    + gridLines
+    + '<polygon points="'+areaPts+'" fill="url(#mgnFade)"/>'
+    + '<polyline points="'+linePts+'" fill="none" stroke="'+color+'" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<circle cx="'+xFn(n-1).toFixed(1)+'" cy="'+yFn(lastVal).toFixed(1)+'" r="4" fill="'+color+'"/>'
+    + xLabels;
+
+  // 更新數字
+  document.getElementById("marginLatest").textContent = lastVal.toFixed(0);
+  const prevVal = vals[vals.length - 2];
+  const diff = lastVal - prevVal;
+  const diffText = (diff >= 0 ? "+" : "") + diff.toFixed(1);
+  const chgEl = document.getElementById("marginChg");
+  chgEl.innerHTML = diffText + '<span class="chg-label">當日增減（萬張）</span>';
+  chgEl.className = "chg " + (diff > 0 ? "more-short" : "less-short");
+  if(dates && dates.length){
+    document.getElementById("marginXStart").textContent = dates[0];
+    document.getElementById("marginXEnd").textContent = dates[dates.length - 1];
+  }
+}
+drawMarginChart(MARGIN_BAL, MARGIN_DATES);
+</script>
+</body>
+</html>
