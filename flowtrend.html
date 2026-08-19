@@ -150,6 +150,11 @@
     <button data-v="d20" class="active">近一月</button>
   </div>
 
+  <div class="seg pill" id="segMetric">
+    <button data-v="lots" class="active">張數</button>
+    <button data-v="value">金額(估)</button>
+  </div>
+
   <div class="seg pill" id="segView">
     <button data-v="cards" class="active">卡片</button>
     <button data-v="heat">熱力圖</button>
@@ -159,28 +164,36 @@
   <div class="heat-grid" id="heatGrid" style="display:none;"></div>
 
   <footer>
-    <b>指標定義</b>：產業每日淨流入 = 樣本內成員「外資買賣超股數 + 投信買賣超股數」加總（不含自營商）；
-    可切換今日／近一週（5日）／近一月（20日）三種累積區間；持續性 = |Σ每日淨流入| / Σ|每日淨流入|，
-    介於0~1，越接近1代表錢每天都同方向、持續堆積，越接近0代表進進出出、互相抵銷（今日單日無此概念，不計算）。<br>
+    <b>指標定義</b>：產業每日淨流入(張) = Σ(外資買賣超股數 + 投信買賣超股數)/1000，樣本內成員加總（不含自營商）；
+    產業每日淨流入(金額估) = Σ(個股淨股數 × 個股當日收盤價)，只加總「當天股數與收盤價都有」的股票，
+    是估算值不是三大法人實際成交金額。可切換今日／近一週（5日）／近一月（20日）三種累積區間；
+    持續性 = |Σ每日淨流入| / Σ|每日淨流入|，介於0~1，越接近1代表錢每天都同方向、持續堆積，
+    越接近0代表進進出出、互相抵銷（今日單日無此概念，不計算）。<br>
     <b>評語門檻</b>：持續性 ≥0.6 = 堆著；0.25–0.6 = 混合；&lt;0.25 = 只是經過（本站自訂粗略門檻，非逆向工程任何第三方網站的演算法）。<br>
-    <b>資料來源</b>：FinMind TaiwanStockInstitutionalInvestorsBuySell，個股層級抽樣（非全市場），
+    <b>資料來源</b>：FinMind TaiwanStockInstitutionalInvestorsBuySell + TaiwanStockPrice，個股層級抽樣（非全市場），
     產業分類為 FinMind TaiwanStockInfo 官方 industry_category。<br>
-    <b>樣本侷限</b>：樣本數低的產業（標示較淡）統計雜訊較大，數字僅供參考，會隨抽樣批次擴大逐步收斂。<br>
+    <b>樣本侷限</b>：樣本數低的產業（標示較淡）統計雜訊較大；因免費 API 額度限制，張數與金額資料採輪替刷新，
+    金額資料通常比張數資料更新得慢，數字僅供參考，會隨刷新逐步收斂。<br>
     這是描述已發生的資金流向，不是預測，也不構成買賣建議。
   </footer>
 
 </div>
 
 <script>
-const FLOW_DATA = {"d1": [{"label": "航運業", "members": 6, "days": 1, "cum_lots": 32569, "persistence": 1.0, "verdict": "單日"}, {"label": "資訊服務業", "members": 5, "days": 1, "cum_lots": 3938, "persistence": 1.0, "verdict": "單日"}, {"label": "食品工業", "members": 6, "days": 1, "cum_lots": 717, "persistence": 1.0, "verdict": "單日"}, {"label": "通信網路業", "members": 8, "days": 1, "cum_lots": 614, "persistence": 1.0, "verdict": "單日"}, {"label": "電子零組件業", "members": 16, "days": 1, "cum_lots": 483, "persistence": 1.0, "verdict": "單日"}, {"label": "其他", "members": 17, "days": 1, "cum_lots": 464, "persistence": 1.0, "verdict": "單日"}, {"label": "電機機械", "members": 13, "days": 1, "cum_lots": 158, "persistence": 1.0, "verdict": "單日"}, {"label": "貿易百貨", "members": 4, "days": 1, "cum_lots": 83, "persistence": 1.0, "verdict": "單日"}, {"label": "觀光餐旅", "members": 6, "days": 1, "cum_lots": 48, "persistence": 1.0, "verdict": "單日"}, {"label": "運動休閒", "members": 3, "days": 1, "cum_lots": 39, "persistence": 1.0, "verdict": "單日"}, {"label": "汽車工業", "members": 6, "days": 1, "cum_lots": 2, "persistence": 1.0, "verdict": "單日"}, {"label": "化學生技醫療", "members": 5, "days": 1, "cum_lots": -17, "persistence": 1.0, "verdict": "單日"}, {"label": "創新板股票", "members": 5, "days": 1, "cum_lots": -29, "persistence": 1.0, "verdict": "單日"}, {"label": "化學工業", "members": 8, "days": 1, "cum_lots": -34, "persistence": 1.0, "verdict": "單日"}, {"label": "居家生活類", "members": 4, "days": 1, "cum_lots": -36, "persistence": 1.0, "verdict": "單日"}, {"label": "數位雲端類", "members": 5, "days": 1, "cum_lots": -68, "persistence": 1.0, "verdict": "單日"}, {"label": "數位雲端", "members": 3, "days": 1, "cum_lots": -93, "persistence": 1.0, "verdict": "單日"}, {"label": "生技醫療業", "members": 15, "days": 1, "cum_lots": -120, "persistence": 1.0, "verdict": "單日"}, {"label": "電腦及週邊設備業", "members": 9, "days": 1, "cum_lots": -123, "persistence": 1.0, "verdict": "單日"}, {"label": "其他電子類", "members": 6, "days": 1, "cum_lots": -193, "persistence": 1.0, "verdict": "單日"}, {"label": "紡織纖維", "members": 13, "days": 1, "cum_lots": -243, "persistence": 1.0, "verdict": "單日"}, {"label": "油電燃氣業", "members": 3, "days": 1, "cum_lots": -451, "persistence": 1.0, "verdict": "單日"}, {"label": "建材營造", "members": 11, "days": 1, "cum_lots": -594, "persistence": 1.0, "verdict": "單日"}, {"label": "其他電子業", "members": 5, "days": 1, "cum_lots": -646, "persistence": 1.0, "verdict": "單日"}, {"label": "綠能環保", "members": 4, "days": 1, "cum_lots": -659, "persistence": 1.0, "verdict": "單日"}, {"label": "鋼鐵工業", "members": 4, "days": 1, "cum_lots": -1621, "persistence": 1.0, "verdict": "單日"}, {"label": "光電業", "members": 18, "days": 1, "cum_lots": -2542, "persistence": 1.0, "verdict": "單日"}, {"label": "金融保險", "members": 3, "days": 1, "cum_lots": -5601, "persistence": 1.0, "verdict": "單日"}, {"label": "電子工業", "members": 36, "days": 1, "cum_lots": -11648, "persistence": 1.0, "verdict": "單日"}, {"label": "半導體業", "members": 19, "days": 1, "cum_lots": -53057, "persistence": 1.0, "verdict": "單日"}], "d5": [{"label": "航運業", "members": 6, "days": 5, "cum_lots": 64361, "persistence": 0.92, "verdict": "堆著"}, {"label": "金融保險", "members": 3, "days": 5, "cum_lots": 62267, "persistence": 0.85, "verdict": "堆著"}, {"label": "半導體業", "members": 19, "days": 5, "cum_lots": 15322, "persistence": 0.04, "verdict": "只是經過"}, {"label": "光電業", "members": 18, "days": 5, "cum_lots": 7146, "persistence": 0.07, "verdict": "只是經過"}, {"label": "資訊服務業", "members": 5, "days": 5, "cum_lots": 6487, "persistence": 1.0, "verdict": "堆著"}, {"label": "化學工業", "members": 8, "days": 5, "cum_lots": 6110, "persistence": 0.35, "verdict": "混合"}, {"label": "綠能環保", "members": 4, "days": 5, "cum_lots": 4712, "persistence": 0.73, "verdict": "堆著"}, {"label": "通信網路業", "members": 8, "days": 5, "cum_lots": 769, "persistence": 0.38, "verdict": "混合"}, {"label": "電機機械", "members": 13, "days": 5, "cum_lots": 721, "persistence": 0.43, "verdict": "混合"}, {"label": "貿易百貨", "members": 4, "days": 5, "cum_lots": 526, "persistence": 0.25, "verdict": "混合"}, {"label": "觀光餐旅", "members": 6, "days": 5, "cum_lots": 86, "persistence": 0.47, "verdict": "混合"}, {"label": "居家生活類", "members": 4, "days": 5, "cum_lots": 10, "persistence": 0.11, "verdict": "只是經過"}, {"label": "創新板股票", "members": 5, "days": 5, "cum_lots": -21, "persistence": 0.12, "verdict": "只是經過"}, {"label": "數位雲端類", "members": 5, "days": 5, "cum_lots": -134, "persistence": 0.4, "verdict": "混合"}, {"label": "汽車工業", "members": 6, "days": 5, "cum_lots": -140, "persistence": 0.54, "verdict": "混合"}, {"label": "食品工業", "members": 6, "days": 5, "cum_lots": -329, "persistence": 0.07, "verdict": "只是經過"}, {"label": "其他電子類", "members": 6, "days": 5, "cum_lots": -339, "persistence": 0.36, "verdict": "混合"}, {"label": "數位雲端", "members": 3, "days": 5, "cum_lots": -408, "persistence": 0.82, "verdict": "堆著"}, {"label": "其他電子業", "members": 5, "days": 5, "cum_lots": -441, "persistence": 0.43, "verdict": "混合"}, {"label": "運動休閒", "members": 3, "days": 5, "cum_lots": -446, "persistence": 0.41, "verdict": "混合"}, {"label": "油電燃氣業", "members": 3, "days": 5, "cum_lots": -544, "persistence": 0.27, "verdict": "混合"}, {"label": "化學生技醫療", "members": 5, "days": 5, "cum_lots": -790, "persistence": 1.0, "verdict": "堆著"}, {"label": "生技醫療業", "members": 15, "days": 5, "cum_lots": -895, "persistence": 0.7, "verdict": "堆著"}, {"label": "電子工業", "members": 36, "days": 5, "cum_lots": -1462, "persistence": 0.03, "verdict": "只是經過"}, {"label": "電腦及週邊設備業", "members": 9, "days": 5, "cum_lots": -1881, "persistence": 0.58, "verdict": "混合"}, {"label": "其他", "members": 17, "days": 5, "cum_lots": -2268, "persistence": 0.36, "verdict": "混合"}, {"label": "電子零組件業", "members": 16, "days": 5, "cum_lots": -3783, "persistence": 0.79, "verdict": "堆著"}, {"label": "紡織纖維", "members": 13, "days": 5, "cum_lots": -4263, "persistence": 0.47, "verdict": "混合"}, {"label": "建材營造", "members": 11, "days": 5, "cum_lots": -5753, "persistence": 1.0, "verdict": "堆著"}, {"label": "鋼鐵工業", "members": 4, "days": 5, "cum_lots": -55382, "persistence": 0.95, "verdict": "堆著"}], "d20": [{"label": "金融保險", "members": 3, "days": 20, "cum_lots": 228637, "persistence": 0.59, "verdict": "混合"}, {"label": "鋼鐵工業", "members": 4, "days": 20, "cum_lots": 204840, "persistence": 0.59, "verdict": "混合"}, {"label": "航運業", "members": 6, "days": 20, "cum_lots": 96722, "persistence": 0.71, "verdict": "堆著"}, {"label": "綠能環保", "members": 4, "days": 20, "cum_lots": 14491, "persistence": 0.46, "verdict": "混合"}, {"label": "資訊服務業", "members": 5, "days": 20, "cum_lots": 8008, "persistence": 0.47, "verdict": "混合"}, {"label": "通信網路業", "members": 8, "days": 20, "cum_lots": 6634, "persistence": 0.33, "verdict": "混合"}, {"label": "運動休閒", "members": 3, "days": 20, "cum_lots": 2049, "persistence": 0.31, "verdict": "混合"}, {"label": "居家生活類", "members": 4, "days": 20, "cum_lots": 387, "persistence": 0.51, "verdict": "混合"}, {"label": "數位雲端類", "members": 5, "days": 20, "cum_lots": 120, "persistence": 0.08, "verdict": "只是經過"}, {"label": "創新板股票", "members": 5, "days": 20, "cum_lots": -9, "persistence": 0.02, "verdict": "只是經過"}, {"label": "觀光餐旅", "members": 6, "days": 20, "cum_lots": -38, "persistence": 0.03, "verdict": "只是經過"}, {"label": "汽車工業", "members": 6, "days": 20, "cum_lots": -67, "persistence": 0.02, "verdict": "只是經過"}, {"label": "貿易百貨", "members": 4, "days": 20, "cum_lots": -613, "persistence": 0.06, "verdict": "只是經過"}, {"label": "其他電子類", "members": 6, "days": 20, "cum_lots": -872, "persistence": 0.2, "verdict": "只是經過"}, {"label": "化學生技醫療", "members": 5, "days": 20, "cum_lots": -1919, "persistence": 0.44, "verdict": "混合"}, {"label": "電機機械", "members": 13, "days": 20, "cum_lots": -3345, "persistence": 0.34, "verdict": "混合"}, {"label": "其他電子業", "members": 5, "days": 20, "cum_lots": -3356, "persistence": 0.54, "verdict": "混合"}, {"label": "生技醫療業", "members": 15, "days": 20, "cum_lots": -3786, "persistence": 0.71, "verdict": "堆著"}, {"label": "化學工業", "members": 8, "days": 20, "cum_lots": -5283, "persistence": 0.08, "verdict": "只是經過"}, {"label": "數位雲端", "members": 3, "days": 20, "cum_lots": -6150, "persistence": 0.7, "verdict": "堆著"}, {"label": "食品工業", "members": 6, "days": 20, "cum_lots": -6392, "persistence": 0.3, "verdict": "混合"}, {"label": "電腦及週邊設備業", "members": 9, "days": 20, "cum_lots": -6671, "persistence": 0.5, "verdict": "混合"}, {"label": "其他", "members": 17, "days": 20, "cum_lots": -8149, "persistence": 0.36, "verdict": "混合"}, {"label": "紡織纖維", "members": 13, "days": 20, "cum_lots": -8387, "persistence": 0.19, "verdict": "只是經過"}, {"label": "建材營造", "members": 11, "days": 20, "cum_lots": -9785, "persistence": 0.28, "verdict": "混合"}, {"label": "電子零組件業", "members": 16, "days": 20, "cum_lots": -13441, "persistence": 0.78, "verdict": "堆著"}, {"label": "半導體業", "members": 19, "days": 20, "cum_lots": -16213, "persistence": 0.02, "verdict": "只是經過"}, {"label": "油電燃氣業", "members": 3, "days": 20, "cum_lots": -18297, "persistence": 0.85, "verdict": "堆著"}, {"label": "光電業", "members": 18, "days": 20, "cum_lots": -54285, "persistence": 0.14, "verdict": "只是經過"}, {"label": "電子工業", "members": 36, "days": 20, "cum_lots": -79462, "persistence": 0.5, "verdict": "混合"}]};
-const SAMPLE_META = { members_total: 280, universe_total: 2148 };
+const FLOW_DATA = {"d1": {"lots": [{"label": "航運業", "members": 6, "days": 1, "cum": 32569.0, "persistence": 1.0, "verdict": "單日"}, {"label": "資訊服務業", "members": 5, "days": 1, "cum": 3938.0, "persistence": 1.0, "verdict": "單日"}, {"label": "食品工業", "members": 6, "days": 1, "cum": 717.0, "persistence": 1.0, "verdict": "單日"}, {"label": "通信網路業", "members": 8, "days": 1, "cum": 614.0, "persistence": 1.0, "verdict": "單日"}, {"label": "電子零組件業", "members": 16, "days": 1, "cum": 483.0, "persistence": 1.0, "verdict": "單日"}, {"label": "其他", "members": 17, "days": 1, "cum": 464.0, "persistence": 1.0, "verdict": "單日"}, {"label": "電機機械", "members": 13, "days": 1, "cum": 158.0, "persistence": 1.0, "verdict": "單日"}, {"label": "貿易百貨", "members": 4, "days": 1, "cum": 83.0, "persistence": 1.0, "verdict": "單日"}, {"label": "觀光餐旅", "members": 6, "days": 1, "cum": 48.0, "persistence": 1.0, "verdict": "單日"}, {"label": "運動休閒", "members": 3, "days": 1, "cum": 39.0, "persistence": 1.0, "verdict": "單日"}, {"label": "汽車工業", "members": 6, "days": 1, "cum": 2.0, "persistence": 1.0, "verdict": "單日"}, {"label": "化學生技醫療", "members": 5, "days": 1, "cum": -17.0, "persistence": 1.0, "verdict": "單日"}, {"label": "創新板股票", "members": 5, "days": 1, "cum": -29.0, "persistence": 1.0, "verdict": "單日"}, {"label": "化學工業", "members": 8, "days": 1, "cum": -34.0, "persistence": 1.0, "verdict": "單日"}, {"label": "居家生活類", "members": 4, "days": 1, "cum": -36.0, "persistence": 1.0, "verdict": "單日"}, {"label": "數位雲端類", "members": 5, "days": 1, "cum": -68.0, "persistence": 1.0, "verdict": "單日"}, {"label": "數位雲端", "members": 3, "days": 1, "cum": -93.0, "persistence": 1.0, "verdict": "單日"}, {"label": "生技醫療業", "members": 15, "days": 1, "cum": -120.0, "persistence": 1.0, "verdict": "單日"}, {"label": "電腦及週邊設備業", "members": 9, "days": 1, "cum": -123.0, "persistence": 1.0, "verdict": "單日"}, {"label": "其他電子類", "members": 6, "days": 1, "cum": -193.0, "persistence": 1.0, "verdict": "單日"}, {"label": "紡織纖維", "members": 13, "days": 1, "cum": -243.0, "persistence": 1.0, "verdict": "單日"}, {"label": "油電燃氣業", "members": 3, "days": 1, "cum": -451.0, "persistence": 1.0, "verdict": "單日"}, {"label": "建材營造", "members": 11, "days": 1, "cum": -594.0, "persistence": 1.0, "verdict": "單日"}, {"label": "其他電子業", "members": 5, "days": 1, "cum": -646.0, "persistence": 1.0, "verdict": "單日"}, {"label": "綠能環保", "members": 4, "days": 1, "cum": -659.0, "persistence": 1.0, "verdict": "單日"}, {"label": "鋼鐵工業", "members": 4, "days": 1, "cum": -1621.0, "persistence": 1.0, "verdict": "單日"}, {"label": "光電業", "members": 18, "days": 1, "cum": -2542.0, "persistence": 1.0, "verdict": "單日"}, {"label": "金融保險", "members": 3, "days": 1, "cum": -5601.0, "persistence": 1.0, "verdict": "單日"}, {"label": "電子工業", "members": 36, "days": 1, "cum": -11648.0, "persistence": 1.0, "verdict": "單日"}, {"label": "半導體業", "members": 19, "days": 1, "cum": -53057.0, "persistence": 1.0, "verdict": "單日"}], "value": [{"label": "光電業", "members": 3, "days": 1, "cum": 0.17, "persistence": 1.0, "verdict": "單日"}]}, "d5": {"lots": [{"label": "航運業", "members": 6, "days": 5, "cum": 64361.0, "persistence": 0.92, "verdict": "堆著"}, {"label": "金融保險", "members": 3, "days": 5, "cum": 62267.0, "persistence": 0.85, "verdict": "堆著"}, {"label": "半導體業", "members": 19, "days": 5, "cum": 15322.0, "persistence": 0.04, "verdict": "只是經過"}, {"label": "光電業", "members": 18, "days": 5, "cum": 7146.0, "persistence": 0.07, "verdict": "只是經過"}, {"label": "資訊服務業", "members": 5, "days": 5, "cum": 6487.0, "persistence": 1.0, "verdict": "堆著"}, {"label": "化學工業", "members": 8, "days": 5, "cum": 6110.0, "persistence": 0.35, "verdict": "混合"}, {"label": "綠能環保", "members": 4, "days": 5, "cum": 4712.0, "persistence": 0.73, "verdict": "堆著"}, {"label": "通信網路業", "members": 8, "days": 5, "cum": 769.0, "persistence": 0.38, "verdict": "混合"}, {"label": "電機機械", "members": 13, "days": 5, "cum": 721.0, "persistence": 0.43, "verdict": "混合"}, {"label": "貿易百貨", "members": 4, "days": 5, "cum": 526.0, "persistence": 0.25, "verdict": "混合"}, {"label": "觀光餐旅", "members": 6, "days": 5, "cum": 86.0, "persistence": 0.47, "verdict": "混合"}, {"label": "居家生活類", "members": 4, "days": 5, "cum": 10.0, "persistence": 0.11, "verdict": "只是經過"}, {"label": "創新板股票", "members": 5, "days": 5, "cum": -21.0, "persistence": 0.12, "verdict": "只是經過"}, {"label": "數位雲端類", "members": 5, "days": 5, "cum": -134.0, "persistence": 0.4, "verdict": "混合"}, {"label": "汽車工業", "members": 6, "days": 5, "cum": -140.0, "persistence": 0.54, "verdict": "混合"}, {"label": "食品工業", "members": 6, "days": 5, "cum": -329.0, "persistence": 0.07, "verdict": "只是經過"}, {"label": "其他電子類", "members": 6, "days": 5, "cum": -339.0, "persistence": 0.36, "verdict": "混合"}, {"label": "數位雲端", "members": 3, "days": 5, "cum": -408.0, "persistence": 0.82, "verdict": "堆著"}, {"label": "其他電子業", "members": 5, "days": 5, "cum": -441.0, "persistence": 0.43, "verdict": "混合"}, {"label": "運動休閒", "members": 3, "days": 5, "cum": -446.0, "persistence": 0.41, "verdict": "混合"}, {"label": "油電燃氣業", "members": 3, "days": 5, "cum": -544.0, "persistence": 0.27, "verdict": "混合"}, {"label": "化學生技醫療", "members": 5, "days": 5, "cum": -790.0, "persistence": 1.0, "verdict": "堆著"}, {"label": "生技醫療業", "members": 15, "days": 5, "cum": -895.0, "persistence": 0.7, "verdict": "堆著"}, {"label": "電子工業", "members": 36, "days": 5, "cum": -1462.0, "persistence": 0.03, "verdict": "只是經過"}, {"label": "電腦及週邊設備業", "members": 9, "days": 5, "cum": -1881.0, "persistence": 0.58, "verdict": "混合"}, {"label": "其他", "members": 17, "days": 5, "cum": -2268.0, "persistence": 0.36, "verdict": "混合"}, {"label": "電子零組件業", "members": 16, "days": 5, "cum": -3783.0, "persistence": 0.79, "verdict": "堆著"}, {"label": "紡織纖維", "members": 13, "days": 5, "cum": -4263.0, "persistence": 0.47, "verdict": "混合"}, {"label": "建材營造", "members": 11, "days": 5, "cum": -5753.0, "persistence": 1.0, "verdict": "堆著"}, {"label": "鋼鐵工業", "members": 4, "days": 5, "cum": -55382.0, "persistence": 0.95, "verdict": "堆著"}], "value": [{"label": "光電業", "members": 3, "days": 5, "cum": 1.46, "persistence": 0.78, "verdict": "堆著"}]}, "d20": {"lots": [{"label": "金融保險", "members": 3, "days": 20, "cum": 228637.0, "persistence": 0.59, "verdict": "混合"}, {"label": "鋼鐵工業", "members": 4, "days": 20, "cum": 204840.0, "persistence": 0.59, "verdict": "混合"}, {"label": "航運業", "members": 6, "days": 20, "cum": 96722.0, "persistence": 0.71, "verdict": "堆著"}, {"label": "綠能環保", "members": 4, "days": 20, "cum": 14491.0, "persistence": 0.46, "verdict": "混合"}, {"label": "資訊服務業", "members": 5, "days": 20, "cum": 8008.0, "persistence": 0.47, "verdict": "混合"}, {"label": "通信網路業", "members": 8, "days": 20, "cum": 6634.0, "persistence": 0.33, "verdict": "混合"}, {"label": "運動休閒", "members": 3, "days": 20, "cum": 2049.0, "persistence": 0.31, "verdict": "混合"}, {"label": "居家生活類", "members": 4, "days": 20, "cum": 387.0, "persistence": 0.51, "verdict": "混合"}, {"label": "數位雲端類", "members": 5, "days": 20, "cum": 120.0, "persistence": 0.08, "verdict": "只是經過"}, {"label": "創新板股票", "members": 5, "days": 20, "cum": -9.0, "persistence": 0.02, "verdict": "只是經過"}, {"label": "觀光餐旅", "members": 6, "days": 20, "cum": -38.0, "persistence": 0.03, "verdict": "只是經過"}, {"label": "汽車工業", "members": 6, "days": 20, "cum": -67.0, "persistence": 0.02, "verdict": "只是經過"}, {"label": "貿易百貨", "members": 4, "days": 20, "cum": -613.0, "persistence": 0.06, "verdict": "只是經過"}, {"label": "其他電子類", "members": 6, "days": 20, "cum": -872.0, "persistence": 0.2, "verdict": "只是經過"}, {"label": "化學生技醫療", "members": 5, "days": 20, "cum": -1919.0, "persistence": 0.44, "verdict": "混合"}, {"label": "電機機械", "members": 13, "days": 20, "cum": -3345.0, "persistence": 0.34, "verdict": "混合"}, {"label": "其他電子業", "members": 5, "days": 20, "cum": -3356.0, "persistence": 0.54, "verdict": "混合"}, {"label": "生技醫療業", "members": 15, "days": 20, "cum": -3786.0, "persistence": 0.71, "verdict": "堆著"}, {"label": "化學工業", "members": 8, "days": 20, "cum": -5283.0, "persistence": 0.08, "verdict": "只是經過"}, {"label": "數位雲端", "members": 3, "days": 20, "cum": -6150.0, "persistence": 0.7, "verdict": "堆著"}, {"label": "食品工業", "members": 6, "days": 20, "cum": -6392.0, "persistence": 0.3, "verdict": "混合"}, {"label": "電腦及週邊設備業", "members": 9, "days": 20, "cum": -6671.0, "persistence": 0.5, "verdict": "混合"}, {"label": "其他", "members": 17, "days": 20, "cum": -8149.0, "persistence": 0.36, "verdict": "混合"}, {"label": "紡織纖維", "members": 13, "days": 20, "cum": -8387.0, "persistence": 0.19, "verdict": "只是經過"}, {"label": "建材營造", "members": 11, "days": 20, "cum": -9785.0, "persistence": 0.28, "verdict": "混合"}, {"label": "電子零組件業", "members": 16, "days": 20, "cum": -13441.0, "persistence": 0.78, "verdict": "堆著"}, {"label": "半導體業", "members": 19, "days": 20, "cum": -16213.0, "persistence": 0.02, "verdict": "只是經過"}, {"label": "油電燃氣業", "members": 3, "days": 20, "cum": -18297.0, "persistence": 0.85, "verdict": "堆著"}, {"label": "光電業", "members": 18, "days": 20, "cum": -54285.0, "persistence": 0.14, "verdict": "只是經過"}, {"label": "電子工業", "members": 36, "days": 20, "cum": -79462.0, "persistence": 0.5, "verdict": "混合"}], "value": [{"label": "光電業", "members": 3, "days": 20, "cum": 1.14, "persistence": 0.1, "verdict": "只是經過"}]}};
+const SAMPLE_META = { members_total: 280, value_members_total: 10, universe_total: 2148 };
 const PERIOD_LABEL = { d1: "今日", d5: "近一週累積", d20: "近一月累積" };
+const METRIC_UNIT = { lots: "張", value: "億元(估)" };
 
-let state = { period: "d20", view: "cards" };
+let state = { period: "d20", metric: "lots", view: "cards" };
 
-function fmtLots(n){
+function fmtNum(n, decimals){
   const sign = n >= 0 ? "+" : "";
-  return sign + n.toLocaleString("en-US");
+  return sign + n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmtVal(r){
+  return state.metric === "value" ? fmtNum(r.cum, 2) : fmtNum(r.cum, 0);
 }
 
 function verdictClass(v){
@@ -190,18 +203,20 @@ function verdictClass(v){
 }
 
 function currentData(){
-  return FLOW_DATA[state.period] || [];
+  const period = FLOW_DATA[state.period] || {};
+  return period[state.metric] || [];
 }
 
 function render(){
   const container = document.getElementById("flowCards");
   container.innerHTML = "";
 
-  const sorted = currentData().slice().sort((a,b) => b.cum_lots - a.cum_lots);
+  const sorted = currentData().slice().sort((a,b) => b.cum - a.cum);
   const isD1 = state.period === "d1";
+  const unit = METRIC_UNIT[state.metric];
 
   sorted.forEach(r => {
-    const isBuy = r.cum_lots >= 0;
+    const isBuy = r.cum >= 0;
     const cls = isBuy ? "buy" : "sell";
     const barPct = Math.max(4, Math.round(r.persistence * 100));
     const bottomHtml = isD1
@@ -217,16 +232,18 @@ function render(){
         <div class="fc-members">樣本 ${r.members} 檔</div>
       </div>
       <div class="fc-mid">
-        <div class="fc-val ${cls}">${fmtLots(r.cum_lots)}</div>
-        <div class="fc-val-label">張（${PERIOD_LABEL[state.period]}）</div>
+        <div class="fc-val ${cls}">${fmtVal(r)}</div>
+        <div class="fc-val-label">${unit}（${PERIOD_LABEL[state.period]}）</div>
       </div>
       <div class="fc-bottom">${bottomHtml}</div>`;
     container.appendChild(card);
   });
 
   const noteEl = document.getElementById("sampleNote");
-  const pct = (SAMPLE_META.members_total / SAMPLE_META.universe_total * 100).toFixed(1);
-  noteEl.textContent = `抽樣涵蓋率：全市場 ${SAMPLE_META.universe_total} 檔中 ${SAMPLE_META.members_total} 檔有資金流向資料（約 ${pct}%），共 ${sorted.length} 個產業別`;
+  const total = state.metric === "value" ? SAMPLE_META.value_members_total : SAMPLE_META.members_total;
+  const pct = (total / SAMPLE_META.universe_total * 100).toFixed(1);
+  const kind = state.metric === "value" ? "有金額(估)資料" : "有資金流向資料";
+  noteEl.textContent = `抽樣涵蓋率：全市場 ${SAMPLE_META.universe_total} 檔中 ${total} 檔${kind}（約 ${pct}%），共 ${sorted.length} 個產業別`;
 }
 
 function mix(hexA, hexB, t){
@@ -240,16 +257,17 @@ function renderHeat(){
   const grid = document.getElementById("heatGrid");
   grid.innerHTML = "";
 
-  const sorted = currentData().slice().sort((a,b) => b.cum_lots - a.cum_lots);
-  const maxAbs = Math.max(...sorted.map(r => Math.abs(r.cum_lots)), 1);
+  const sorted = currentData().slice().sort((a,b) => b.cum - a.cum);
+  const maxAbs = Math.max(...sorted.map(r => Math.abs(r.cum)), 1);
   const isD1 = state.period === "d1";
+  const unit = METRIC_UNIT[state.metric];
   const panelHex = "#1a1e26", buyHex = "#ff5b5b", sellHex = "#35d38a";
 
   sorted.forEach(r => {
-    const isBuy = r.cum_lots >= 0;
-    const t = Math.pow(Math.abs(r.cum_lots) / maxAbs, 0.5); // 開根號：放大中段對比
+    const isBuy = r.cum >= 0;
+    const t = Math.pow(Math.abs(r.cum) / maxAbs, 0.5); // 開根號：放大中段對比
     const bg = mix(panelHex, isBuy ? buyHex : sellHex, t);
-    const meta = isD1 ? `${fmtLots(r.cum_lots)}張` : `${fmtLots(r.cum_lots)}張 · 持續${r.persistence.toFixed(2)}`;
+    const meta = isD1 ? `${fmtVal(r)}${unit}` : `${fmtVal(r)}${unit} · 持續${r.persistence.toFixed(2)}`;
     const tile = document.createElement("div");
     tile.className = "heat-tile" + (r.members < 5 ? " heat-low" : "");
     tile.style.background = bg;
@@ -282,11 +300,20 @@ function switchPeriod(p){
   renderAll();
 }
 
+function switchMetric(m){
+  state.metric = m;
+  document.querySelectorAll("#segMetric button").forEach(b => b.classList.toggle("active", b.dataset.v === m));
+  renderAll();
+}
+
 document.getElementById("segView").querySelectorAll("button").forEach(btn => {
   btn.addEventListener("click", () => switchView(btn.dataset.v));
 });
 document.getElementById("segPeriod").querySelectorAll("button").forEach(btn => {
   btn.addEventListener("click", () => switchPeriod(btn.dataset.v));
+});
+document.getElementById("segMetric").querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("click", () => switchMetric(btn.dataset.v));
 });
 
 render();
