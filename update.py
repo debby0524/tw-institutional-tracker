@@ -20,7 +20,7 @@ import os
 import re
 import subprocess
 import time
-import urllib.request
+import requests
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -40,14 +40,15 @@ MARGIN_KEEP = 30   # 融資餘額圖表保留天數
 # 網路工具
 # ──────────────────────────────────────────
 def http_get(url, timeout=12):
-    req = urllib.request.Request(url, headers={
+    headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
         "Referer": "https://www.twse.com.tw/",
-    })
+    }
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode("utf-8", errors="ignore")
+        r = requests.get(url, headers=headers, timeout=timeout)
+        r.raise_for_status()
+        return r.text
     except Exception as e:
         print(f"  [HTTP ERR] {url[:70]}: {e}")
         return None
