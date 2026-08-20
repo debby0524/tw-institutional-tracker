@@ -59,6 +59,12 @@ def parse_num(s):
     except:
         return 0
 
+def parse_float(s):
+    try:
+        return float(str(s).replace(",", "").strip())
+    except:
+        return 0.0
+
 
 # ──────────────────────────────────────────
 # T86 — 單日抓取與解析
@@ -102,7 +108,7 @@ def fetch_close_prices(date_str):
         prices = {}
         for row in table.get("data", []):
             code = row[0].strip()
-            price = parse_num(row[8])
+            price = parse_float(row[8])
             if price > 0:
                 prices[code] = price
         return prices
