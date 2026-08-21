@@ -201,10 +201,11 @@
     持續性 = |Σ每日淨流入| / Σ|每日淨流入|，介於0~1，越接近1代表錢每天都同方向、持續堆積，
     越接近0代表進進出出、互相抵銷（今日單日無此概念，不計算）。<br>
     <b>評語門檻</b>：持續性 ≥0.6 = 堆著；0.25–0.6 = 混合；&lt;0.25 = 只是經過（本站自訂粗略門檻，非逆向工程任何第三方網站的演算法）。<br>
-    <b>資料來源</b>：FinMind TaiwanStockInstitutionalInvestorsBuySell + TaiwanStockPrice，個股層級抽樣（非全市場），
-    產業分類為 FinMind TaiwanStockInfo 官方 industry_category。<br>
-    <b>樣本侷限</b>：樣本數低的產業（標示較淡）統計雜訊較大；因免費 API 額度限制，張數與金額資料採輪替刷新，
-    金額資料通常比張數資料更新得慢，數字僅供參考，會隨刷新逐步收斂。<br>
+    <b>資料來源</b>：TWSE T86（上市三大法人買賣超彙總表）＋ MI_INDEX（上市收盤行情）、
+    TPEx open API（上櫃三大法人買賣明細、上櫃收盤行情），涵蓋全市場上市＋上櫃個股；
+    產業分類為 FinMind TaiwanStockInfo 官方 industry_category（分類本身不常變動，不需每日重抓）。<br>
+    <b>侷限</b>：樣本數低的產業（標示較淡）統計雜訊較大；上櫃股票的歷史趨勢因官方 API 無歷史查詢，
+    採「切換當天起逐日累積」，近一週／近一月數據會在切換後約20個交易日內逐步補齊到全市場水準。<br>
     這是描述已發生的資金流向，不是預測，也不構成買賣建議。
   </footer>
 
@@ -296,7 +297,7 @@ function render(){
   const total = state.metric === "value" ? SAMPLE_META.value_members_total : SAMPLE_META.members_total;
   const pct = (total / SAMPLE_META.universe_total * 100).toFixed(1);
   const kind = state.metric === "value" ? "有金額(估)資料" : "有資金流向資料";
-  noteEl.textContent = `抽樣涵蓋率：全市場 ${SAMPLE_META.universe_total} 檔中 ${total} 檔${kind}（約 ${pct}%），共 ${sorted.length} 個產業別`;
+  noteEl.textContent = `市場涵蓋率：全市場 ${SAMPLE_META.universe_total} 檔中 ${total} 檔${kind}（約 ${pct}%），共 ${sorted.length} 個產業別`;
 }
 
 function mix(hexA, hexB, t){
