@@ -158,6 +158,7 @@
 <div class="wrap">
 
   <header>
+    <a href="index.html" id="backLink" style="display:inline-block;margin-bottom:10px;font-size:12px;color:#58a6ff;text-decoration:none;font-family:'IBM Plex Mono',monospace;">← 返回總覽</a>
     <div class="eyebrow">FUND FLOW BY INDUSTRY · 產業金流動向</div>
     <h1>產業金流動向</h1>
     <div class="sub-note" id="sampleNote">樣本載入中...</div>
@@ -371,6 +372,24 @@ document.getElementById("segMetric").querySelectorAll("button").forEach(btn => {
 });
 
 render();
+
+// 若這頁是被 index.html 用 iframe 嵌入（tab 分頁模式），返回連結改成切換回總覽 tab，
+// 不要在 iframe 裡面又整頁導到 index.html（會巢狀嵌套一份）
+(function(){
+  var back = document.getElementById("backLink");
+  if(!back) return;
+  if(window.self !== window.top){
+    back.addEventListener("click", function(e){
+      e.preventDefault();
+      try{
+        window.top.switchTab("overview");
+        window.top.scrollTo(0, 0);
+      }catch(err){
+        window.top.location.href = "index.html";
+      }
+    });
+  }
+})();
 </script>
 </body>
 </html>
