@@ -330,11 +330,13 @@
   <header>
     <div class="eyebrow">INSTITUTIONAL FLOW TRACKER · 台股三大法人</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin:-2px 0 4px;">
-      <a href="flowtrend.html" style="font-size:12px;color:#58a6ff;text-decoration:none;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">產業金流動向 →</a>
       <a href="industry-revenue.html" style="font-size:12px;color:#58a6ff;text-decoration:none;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">電子產業月營收 →</a>
     </div>
-    </div>
     <h1>外資 / 投信 買賣超追蹤 <span class="date" id="dateLabel">2026-08-20</span></h1>
+    <div class="demo-flag" style="color:var(--sell); border-color:#1c4a34;">✅ 外資／投信買賣超、期貨淨未平倉、USD/TWD 匯率均為 <b>2026/08/20</b> 真實資料</div>
+  </header>
+
+  <section class="tab-panel" id="tab-overview" data-tab="overview">
     <div class="fx-strip">
       <div class="fx-top">
         <span class="fx-label">USD/TWD</span>
@@ -351,11 +353,8 @@
         <svg id="fxSparkSvg" viewBox="0 0 700 60" preserveAspectRatio="none" style="width:100%; height:50px; display:block;"></svg>
       </div>
     </div>
-    <div class="demo-flag" style="color:var(--sell); border-color:#1c4a34;">✅ 外資／投信買賣超、期貨淨未平倉、USD/TWD 匯率均為 <b>2026/08/20</b> 真實資料</div>
-  </header>
 
-  <section class="tab-panel" id="tab-overview" data-tab="overview">
-    <div class="inst-total">
+    <div class="inst-total" style="margin-top:16px;">
       <div class="inst-card" id="cardForeign">
         <div class="ic-label">外資及陸資</div>
         <div class="ic-val buy">+223.3億</div>
@@ -384,59 +383,8 @@
         </div>
       </div>
     </div>
-  </section>
 
-  <section class="tab-panel" id="tab-ranking" data-tab="ranking" style="display:none;">
-    <div class="highlight-card buy" id="highlightCard">
-      <div class="hl-main">
-        <span id="highlightText">外資今日全部 <b>淨買超 454.5億</b></span>
-        <span class="hl-badge">全市場官方</span>
-      </div>
-      <div class="hl-note">註：本卡金額為三大法人整體買賣超（來源 TWSE BFI82U），下方個股排行為 TWSE T86 個股買賣超股數計算，兩份官方報表統計口徑不同，加總數字不會完全一致。</div>
-    </div>
-
-    <div class="controls">
-      <div class="row">
-        <div class="seg institution" id="segInst">
-          <button data-v="foreign" class="active">外資及陸資</button>
-          <button data-v="trust">投信</button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="seg direction pill" id="segDir">
-          <button data-v="buy" class="active">買超</button>
-          <button data-v="sell">賣超</button>
-        </div>
-      </div>
-      <div class="topn">
-        <span>累積期間</span>
-        <div class="seg pill" id="segPeriod">
-          <button data-v="d1" class="active">1日</button>
-          <button data-v="d5">5日</button>
-          <button data-v="d15">15日</button>
-        </div>
-      </div>
-      <div class="topn">
-        <span>排行依據</span>
-        <div class="seg pill" id="segMetric">
-          <button data-v="lots" class="active">買賣超張數</button>
-          <button data-v="amt">買賣超金額(估)</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-head">
-        <div class="title"><span id="titleInst">外資及陸資</span> <span id="titleDir">買超</span> <span id="titlePeriod">1日</span>累積 Top 15</div>
-        <div class="unit" id="rankUnit">單位：張</div>
-      </div>
-      <div class="rank-cards" id="tbody"></div>
-    </div>
-    <div class="hl-note" style="margin-top:6px;">金額(估) = 買賣超張數 × 當日收盤價，非三大法人實際成交金額，僅供排序參考。</div>
-  </section>
-
-  <section class="tab-panel" id="tab-macro" data-tab="macro" style="display:none;">
-    <div class="panel chart-panel">
+    <div class="panel chart-panel" style="margin-top:16px;">
       <div class="panel-head">
         <div class="title">外資 臺股期貨 淨未平倉（近一個月）</div>
         <div class="unit">單位：口</div>
@@ -490,6 +438,61 @@
     </div>
   </section>
 
+  <section class="tab-panel" id="tab-ranking" data-tab="ranking" style="display:none;">
+    <div class="highlight-card buy" id="highlightCard">
+      <div class="hl-main">
+        <span id="highlightText">外資今日全部 <b>淨買超 454.5億</b></span>
+        <span class="hl-badge">全市場官方</span>
+      </div>
+      <div class="hl-note">註：本卡金額為三大法人整體買賣超（來源 TWSE BFI82U），下方個股排行為 TWSE T86 個股買賣超股數計算，兩份官方報表統計口徑不同，加總數字不會完全一致。</div>
+    </div>
+
+    <div class="controls">
+      <div class="row">
+        <div class="seg institution" id="segInst">
+          <button data-v="foreign" class="active">外資及陸資</button>
+          <button data-v="trust">投信</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="seg direction pill" id="segDir">
+          <button data-v="buy" class="active">買超</button>
+          <button data-v="sell">賣超</button>
+        </div>
+      </div>
+      <div class="topn">
+        <span>累積期間</span>
+        <div class="seg pill" id="segPeriod">
+          <button data-v="d1" class="active">1日</button>
+          <button data-v="d5">5日</button>
+          <button data-v="d15">15日</button>
+        </div>
+      </div>
+      <div class="topn">
+        <span>排行依據</span>
+        <div class="seg pill" id="segMetric">
+          <button data-v="lots" class="active">買賣超張數</button>
+          <button data-v="amt">買賣超金額(估)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="title"><span id="titleInst">外資及陸資</span> <span id="titleDir">買超</span> <span id="titlePeriod">1日</span>累積 Top 15</div>
+        <div class="unit" id="rankUnit">單位：張</div>
+      </div>
+      <div class="rank-cards" id="tbody"></div>
+    </div>
+    <div class="hl-note" style="margin-top:6px;">金額(估) = 買賣超張數 × 當日收盤價，非三大法人實際成交金額，僅供排序參考。</div>
+  </section>
+
+  <section class="tab-panel" id="tab-flow" data-tab="flow" style="display:none;">
+    <iframe id="flowFrame" src="flowtrend.html" title="產業金流動向" loading="lazy"
+      style="width:100%; border:none; display:block; background:transparent; min-height:400px;"
+      onload="resizeFlowFrame()"></iframe>
+  </section>
+
   <footer>
     <b>全市場融資餘額</b>：來源 TWSE MI_MARGN，資料日期 <b>2026/08/20</b>（883 萬張，當日增減 +1 萬張）<br>
     <b>三大法人總買賣超金額</b>：來源 TWSE BFI82U，資料日期 <b>2026/08/20</b>（外資 +73.2億、投信 -20.5億、自營商 -61.1億）<br>
@@ -520,9 +523,9 @@
     <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8l7.5-5 7.5 5"/><path d="M4 8v7.5"/><path d="M7.5 8v7.5"/><path d="M12.5 8v7.5"/><path d="M16 8v7.5"/><path d="M2.5 15.5h15"/></svg>
     <span>投信排行</span>
   </button>
-  <button id="nav-macro" onclick="switchTab('macro')">
-    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 15.5l4.5-5 3.5 3 6-7.5"/><path d="M13 5.5h3.5V9"/></svg>
-    <span>期貨／匯率</span>
+  <button id="nav-flow" onclick="switchTab('flow')">
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10.5" width="3.5" height="7"/><rect x="8.25" y="6" width="3.5" height="11.5"/><rect x="14" y="2.5" width="3.5" height="15"/></svg>
+    <span>產業金流</span>
   </button>
 </nav>
 
@@ -564,8 +567,8 @@ function fmt(n){
 
 // ===== 改動一：底部分頁切換（顯示/隱藏區塊，不重新載入）=====
 function switchTab(key){
-  var panelIdOf = { overview:"tab-overview", foreign:"tab-ranking", trust:"tab-ranking", macro:"tab-macro" };
-  ["tab-overview","tab-ranking","tab-macro"].forEach(function(id){
+  var panelIdOf = { overview:"tab-overview", foreign:"tab-ranking", trust:"tab-ranking", flow:"tab-flow" };
+  ["tab-overview","tab-ranking","tab-flow"].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.style.display = "none";
   });
@@ -577,11 +580,24 @@ function switchTab(key){
     render();
   }
 
+  if(key === "flow"){
+    resizeFlowFrame();
+  }
+
   document.querySelectorAll(".bottom-nav button").forEach(function(b){ b.classList.remove("active"); });
   var navBtn = document.getElementById("nav-" + key);
   if(navBtn) navBtn.classList.add("active");
 
   window.scrollTo(0, 0);
+}
+
+function resizeFlowFrame(){
+  var frame = document.getElementById("flowFrame");
+  if(!frame) return;
+  try{
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    frame.style.height = doc.documentElement.scrollHeight + "px";
+  }catch(e){}
 }
 
 function render(){
