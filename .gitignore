@@ -1,5 +1,6 @@
 data.json
 revenue-data.json
+flow_data.json
 .netlify/
 .claude/
 __pycache__/

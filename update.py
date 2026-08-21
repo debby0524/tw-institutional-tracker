@@ -610,6 +610,13 @@ def main():
     save_data(data)
     print("   index.html 與 data.json 已儲存")
 
+    # 7b. 更新產業金流動向頁面（flowtrend.html，獨立快取檔 flow_data.json）
+    try:
+        from update_flowtrend import update_flowtrend
+        update_flowtrend(today)
+    except Exception as e:
+        print(f"   [flowtrend ERROR] {e}")
+
     # 8. 部署 — git push 到 GitHub Pages
     print("\n【6】部署至 GitHub Pages...")
     deploy_to_github_pages(today)
