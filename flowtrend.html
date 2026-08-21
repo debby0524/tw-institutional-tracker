@@ -52,6 +52,11 @@
   .legend span{ display:flex; align-items:center; gap:5px; }
   .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
 
+  .period-note{
+    font-size:11px; color:var(--amber); line-height:1.6; font-family:'IBM Plex Mono',monospace;
+    background:#2a2312; border:1px solid #5a4a1a; border-radius:6px; padding:8px 10px; margin-bottom:10px;
+  }
+
   .flow-cards{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
   .flow-card{
     background: var(--panel); border:1px solid var(--line); border-radius:10px;
@@ -175,6 +180,7 @@
     <span><span class="dot" style="background:var(--sell)"></span>淨流出（綠）</span>
     <span id="legendExtra">持續性條：越長＝錢越單向堆積，越短＝進進出出互相抵銷</span>
   </div>
+  <div class="period-note" id="periodNote" style="display:none;"></div>
 
   <div class="seg pill" id="segPeriod">
     <button data-v="d1">今日</button>
@@ -349,9 +355,21 @@ function switchView(v){
   renderAll();
 }
 
+function updatePeriodNote(){
+  const el = document.getElementById("periodNote");
+  if(!el) return;
+  if(state.period === "d1"){
+    el.textContent = "⚠「今日」只有一天，持續性固定顯示1.00，不代表真的持續。要看哪個族群連續買賣超同一個方向，請切換「近一週」或「近一月」。";
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+  }
+}
+
 function switchPeriod(p){
   state.period = p;
   document.querySelectorAll("#segPeriod button").forEach(b => b.classList.toggle("active", b.dataset.v === p));
+  updatePeriodNote();
   renderAll();
 }
 
@@ -372,6 +390,7 @@ document.getElementById("segMetric").querySelectorAll("button").forEach(btn => {
 });
 
 render();
+updatePeriodNote();
 
 // 若這頁是被 index.html 用 iframe 嵌入（tab 分頁模式），返回連結改成切換回總覽 tab，
 // 不要在 iframe 裡面又整頁導到 index.html（會巢狀嵌套一份）
