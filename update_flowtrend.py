@@ -297,7 +297,29 @@ def compute_sample_meta(industry_map, members_lots, members_value):
     }
 
 
-def compute_alerts(daily_lots, members_lots):
+def top3_stocks_for_industry(today_day, industry_map, industry_label):
+    """今日該產業內，依買賣超張數排名前3檔個股。回傳 [{"c","n","lots"}, ...]。"""
+    merged = {}
+    names = {}
+    for s in today_day["twse"] + today_day["tpex"]:
+        c = s["c"]
+        if industry_map.get(c) != industry_label:
+            continue
+        pf, pt = merged.get(c, (0, 0))
+        merged[c] = (pf + s["f"], pt + s["t"])
+        names[c] = s["n"]
+
+    rows = []
+    for c, (f, t) in merged.items():
+        net_shares = f + t
+        if net_shares == 0:
+            continue
+        rows.append({"c": c, "n": names[c], "lots": round(net_shares / 1000, 0)})
+    rows.sort(key=lambda r: -r["lots"])
+    return rows[:3]
+
+
+def compute_alerts(daily_lots, members_lots, today_day, industry_map):
     """今日剛啟動：今日淨流入(張) >= 自身近20日均值(不含今日) 3倍以上，且方向為買超，
     過去20日(不含今日)尚未列「堆著」。歷史不足 ALERT_MIN_HIST_DAYS 天不判斷。"""
     alerts = []
@@ -328,6 +350,7 @@ def compute_alerts(daily_lots, members_lots):
             "members": len(members_lots.get(ind, set())),
             "ratio": round(ratio, 1),
             "cum": round(today_val, 0),
+            "top3": top3_stocks_for_industry(today_day, industry_map, ind),
         })
 
     alerts.sort(key=lambda a: -a["ratio"])
@@ -436,7 +459,7 @@ def update_flowtrend(today_str):
     # 4. 計算
     flow_data, members_lots, members_value, daily_lots = compute_flow_data(days, industry_map)
     sample_meta = compute_sample_meta(industry_map, members_lots, members_value)
-    alerts = compute_alerts(daily_lots, members_lots)
+    alerts = compute_alerts(daily_lots, members_lots, days[-1], industry_map)
 
     print(f"  {sample_meta['n_industries']} 個產業別，市場涵蓋率 {sample_meta['members_total']}/{sample_meta['universe_total']}")
     if alerts:
