@@ -3,11 +3,16 @@
 台灣電子產業月營收更新腳本
 每月10日後執行一次，抓取最新月份營收並更新 industry-revenue.html
 資料來源：FinMind TaiwanStockMonthRevenue API
+
+部署：git push 到 github.com/debby0524/tw-institutional-tracker（main 分支，GitHub Pages
+      直接從 main 的 / (root) 建置，與 update.py 共用同一個 repo）。推送用的 Personal
+      Access Token 存在 ~/.github_token，只需要 Contents read/write 權限，不會存進 repo 或 log。
 """
 
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -18,8 +23,8 @@ from pathlib import Path
 DIR = Path(__file__).parent
 HTML_PATH = DIR / "industry-revenue.html"
 JSON_PATH = DIR / "revenue-data.json"
-NETLIFY_SITE_ID = "cd9aa85d-5847-4e8a-9d1a-34bea93f7acb"
-NETLIFY_CLI = os.path.expanduser("~/.npm-global/bin/netlify")
+GITHUB_TOKEN_PATH = os.path.expanduser("~/.github_token")
+GITHUB_REPO_URL = "github.com/debby0524/tw-institutional-tracker.git"
 
 FINMIND_BASE = "https://api.finmindtrade.com/api/v4/data"
 HISTORY_START = "2022-01-01"
@@ -466,21 +471,34 @@ def update_html(data: dict) -> None:
     print(f"已更新 {HTML_PATH}")
 
 
-def deploy() -> None:
-    token_path = os.path.expanduser("~/.netlify_token")
-    env = os.environ.copy()
-    if os.path.exists(token_path):
-        env["NETLIFY_AUTH_TOKEN"] = open(token_path).read().strip()
+def deploy_to_github_pages() -> None:
+    def run(args, **kw):
+        return subprocess.run(args, cwd=DIR, capture_output=True, text=True, timeout=30, **kw)
 
-    import subprocess
-    cmd = [NETLIFY_CLI, "deploy", "--prod",
-           "--dir", str(DIR),
-           "--site", NETLIFY_SITE_ID]
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=120)
+    run(["git", "add", "-A"])
+    diff = run(["git", "diff", "--cached", "--quiet"])
+    if diff.returncode == 0:
+        print("   沒有變動，跳過 commit/push")
+        return
+
+    commit = run(["git", "commit", "-m", f"Update revenue {date.today().isoformat()} 資料"])
+    if commit.returncode != 0:
+        print(f"   ❌ commit 失敗：{commit.stderr[:300]}")
+        return
+
+    try:
+        token = open(GITHUB_TOKEN_PATH).read().strip()
+    except FileNotFoundError:
+        print(f"   ❌ 找不到 GitHub token（{GITHUB_TOKEN_PATH}），已 commit 但沒有 push")
+        return
+
+    push_url = f"https://oauth2:{token}@{GITHUB_REPO_URL}"
+    result = run(["git", "push", push_url, "main"])
     if result.returncode == 0:
-        print("Netlify 部署成功")
+        print("   ✅ 部署成功 → https://debby0524.github.io/tw-institutional-tracker/")
     else:
-        print(f"Netlify 部署失敗:\n{result.stderr[:500]}")
+        err = result.stderr.replace(token, "***")[:300]
+        print(f"   ❌ push 失敗：{err}")
 
 
 def main():
@@ -496,7 +514,7 @@ def main():
     save_json(data)
     update_html(data)
     if "--no-deploy" not in sys.argv:
-        deploy()
+        deploy_to_github_pages()
     print("\n完成！")
 
 
