@@ -316,8 +316,15 @@ def update_existing(existing: dict) -> dict:
             print(f"[{cfg['name']}] 已是最新 ({last})，跳過")
             continue
 
-        # 找出需要補的月份起始點
-        start_date = f"{last}-01" if last else HISTORY_START
+        # 找出需要補的月份起始點：往回多重抓一個月，因為在申報截止日（每月10日）前
+        # 執行時，最後一兩個月可能只有部分公司公布，需要之後再覆蓋補齊
+        if last:
+            ly, lm = int(last[:4]), int(last[5:7])
+            ly, lm = (ly - 1, 12) if lm == 1 else (ly, lm - 1)
+            refresh_from = f"{ly}-{lm:02d}"
+        else:
+            refresh_from = ""
+        start_date = f"{refresh_from}-01" if refresh_from else HISTORY_START
         print(f"\n[{cfg['name']}] 增量更新 from {start_date}...")
 
         stock_names = dict(cfg["stocks"])
@@ -342,7 +349,7 @@ def update_existing(existing: dict) -> dict:
         # 計算新月份
         all_new_months = sorted(set(
             m for rd in new_rev_by_stock.values() for m in rd.keys()
-            if m > last
+            if m >= refresh_from
         ))
 
         for m in all_new_months:
